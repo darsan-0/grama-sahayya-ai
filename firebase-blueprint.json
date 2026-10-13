@@ -1,0 +1,351 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Citizen profile settings and non-sensitive eligibility demographic preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "preferredLanguage": { "type": "string", "maxLength": 32 },
+        "state": { "type": "string", "maxLength": 64 },
+        "district": { "type": "string", "maxLength": 64 },
+        "locationType": { "type": "string", "enum": ["rural", "urban", "semi-urban"] },
+        "educationLevel": { "type": "string", "maxLength": 64 },
+        "occupation": { "type": "string", "maxLength": 64 },
+        "incomeRange": { "type": "string", "maxLength": 64 },
+        "age": { "type": "number" },
+        "gender": { "type": "string", "maxLength": 32 },
+        "socialCategory": { "type": "string", "maxLength": 64 },
+        "hasDisability": { "type": "boolean" },
+        "isFarmer": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "preferredLanguage"]
+    },
+    "UserPrivateData": {
+      "title": "UserPrivateData",
+      "description": "PII isolation subcollection for citizen contact information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "phoneNumber": { "type": "string", "maxLength": 32 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId"]
+    },
+    "Scheme": {
+      "title": "Scheme",
+      "description": "Verified Government welfare scheme record with authentic eligibility guidelines and sources",
+      "type": "object",
+      "properties": {
+        "schemeId": { "type": "string", "maxLength": 128 },
+        "officialName": { "type": "string", "maxLength": 256 },
+        "teName": { "type": "string", "maxLength": 256 },
+        "hiName": { "type": "string", "maxLength": 256 },
+        "department": { "type": "string", "maxLength": 128 },
+        "govLevel": { "type": "string", "enum": ["central", "state", "district"] },
+        "state": { "type": "string", "maxLength": 64 },
+        "category": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "teDescription": { "type": "string", "maxLength": 4000 },
+        "benefitDetails": { "type": "string", "maxLength": 2000 },
+        "requiredDocuments": { "type": "array" },
+        "officialApplicationUrl": { "type": "string", "maxLength": 512 },
+        "officialInfoUrl": { "type": "string", "maxLength": 512 },
+        "sourceUrls": { "type": "array" },
+        "verificationStatus": { "type": "string", "enum": ["verified", "pending_review", "stale"] },
+        "lastVerifiedAt": { "type": "string", "format": "date-time" },
+        "published": { "type": "boolean" },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["schemeId", "officialName", "department", "govLevel", "category", "verificationStatus", "published"]
+    },
+    "PublicService": {
+      "title": "PublicService",
+      "description": "Citizen guidance workflow for digital certificates and administrative services",
+      "type": "object",
+      "properties": {
+        "serviceId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 256 },
+        "teName": { "type": "string", "maxLength": 256 },
+        "category": { "type": "string", "maxLength": 64 },
+        "purpose": { "type": "string", "maxLength": 2000 },
+        "officialPortal": { "type": "string", "maxLength": 512 },
+        "officialFee": { "type": "string", "maxLength": 128 },
+        "processingTime": { "type": "string", "maxLength": 128 },
+        "requiredDocuments": { "type": "array" },
+        "steps": { "type": "array" },
+        "trackingInstructions": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["serviceId", "name", "category", "officialPortal"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Citizen consultation chat thread with Grama Sahayya AI Assistant",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "preferredLanguage": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["conversationId", "userId", "title"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Individual message in a consultation thread",
+      "type": "object",
+      "properties": {
+        "messageId": { "type": "string", "maxLength": 128 },
+        "conversationId": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+        "content": { "type": "string", "maxLength": 8000 },
+        "language": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["messageId", "conversationId", "role", "content"]
+    },
+    "AssistanceSession": {
+      "title": "AssistanceSession",
+      "description": "Guided application preparation and tracking status",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "schemeId": { "type": "string", "maxLength": 128 },
+        "schemeName": { "type": "string", "maxLength": 256 },
+        "status": {
+          "type": "string",
+          "enum": [
+            "interested",
+            "eligibility_assessed",
+            "documents_preparing",
+            "ready_to_submit",
+            "reported_submitted",
+            "submission_verified",
+            "under_review_verified",
+            "approved_verified",
+            "rejected_verified",
+            "assistance_completed",
+            "status_unknown"
+          ]
+        },
+        "isVerifiedDirectSubmission": { "type": "boolean" },
+        "officialSubmissionReference": { "type": "string", "maxLength": 128 },
+        "verifiedOutcomeNotes": { "type": "string", "maxLength": 2000 },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sessionId", "userId", "schemeId", "schemeName", "status"]
+    },
+    "SavedScheme": {
+      "title": "SavedScheme",
+      "description": "Bookmarked scheme by a citizen",
+      "type": "object",
+      "properties": {
+        "savedId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "schemeId": { "type": "string", "maxLength": 128 },
+        "schemeName": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["savedId", "userId", "schemeId", "schemeName"]
+    },
+    "UserFeedback": {
+      "title": "UserFeedback",
+      "description": "Feedback and support tickets submitted by citizens",
+      "type": "object",
+      "properties": {
+        "feedbackId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "category": { "type": "string", "maxLength": 64 },
+        "message": { "type": "string", "maxLength": 2000 },
+        "rating": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["feedbackId", "userId", "message"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Designated administrator permissions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["super_admin", "scheme_reviewer", "support_staff", "analytics_viewer"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "role"]
+    },
+    "SchemeApplication": {
+      "title": "SchemeApplication",
+      "description": "Unique journey of a citizen applying for a government welfare scheme",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "schemeId": { "type": "string", "maxLength": 128 },
+        "schemeName": { "type": "string", "maxLength": 256 },
+        "officialName": { "type": "string", "maxLength": 256 },
+        "category": { "type": "string", "maxLength": 64 },
+        "status": {
+          "type": "string",
+          "enum": [
+            "assistance_started",
+            "eligibility_checked",
+            "application_in_progress",
+            "externally_redirected",
+            "submitted_self_reported",
+            "submitted_verified",
+            "pending_verified",
+            "approved_verified",
+            "rejected_verified",
+            "status_unknown"
+          ]
+        },
+        "statusSource": { "type": "string", "enum": ["citizen_self_reported", "authorized_integration", "guidance_workflow", "admin_verified"] },
+        "officialSubmissionReference": { "type": "string", "maxLength": 128 },
+        "verificationTimestamp": { "type": "string", "format": "date-time" },
+        "verifiedBy": { "type": "string", "maxLength": 128 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "lastUpdatedAt": { "type": "string", "format": "date-time" },
+        "attemptsCount": { "type": "number" }
+      },
+      "required": ["id", "userId", "schemeId", "status", "statusSource", "startedAt"]
+    },
+    "ApplicationStatusEvent": {
+      "title": "ApplicationStatusEvent",
+      "description": "Auditable log of scheme application status changes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "applicationId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "schemeId": { "type": "string", "maxLength": 128 },
+        "fromStatus": { "type": "string", "maxLength": 64 },
+        "toStatus": { "type": "string", "maxLength": 64 },
+        "source": { "type": "string", "maxLength": 64 },
+        "changedBy": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "applicationId", "userId", "schemeId", "toStatus", "source", "changedBy", "timestamp"]
+    },
+    "SchemeEngagementEvent": {
+      "title": "SchemeEngagementEvent",
+      "description": "Validated engagement event for authoritative analytics",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "eventType": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "schemeId": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "eventType", "timestamp"]
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Security audit trail for administrative operations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "actorEmail": { "type": "string", "maxLength": 128 },
+        "action": { "type": "string", "maxLength": 128 },
+        "targetCollection": { "type": "string", "maxLength": 128 },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "actorUid", "actorEmail", "action", "timestamp"]
+    },
+    "SystemMetric": {
+      "title": "SystemMetric",
+      "description": "Authoritative non-PII aggregate figures for transparency and administration",
+      "type": "object",
+      "properties": {
+        "metricId": { "type": "string", "maxLength": 64 },
+        "totalCitizensAssisted": { "type": "number" },
+        "totalApplicationsPrepared": { "type": "number" },
+        "totalVerifiedSchemes": { "type": "number" },
+        "totalUserReportedSubmissions": { "type": "number" },
+        "lastAggregatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["metricId", "totalCitizensAssisted"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Citizen user demographic profile and language preferences"
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": "UserPrivateData",
+      "description": "Isolated PII records (email/phone) restricted strictly to the user"
+    },
+    "/schemes/{schemeId}": {
+      "schema": "Scheme",
+      "description": "Verified Central and Andhra Pradesh government scheme catalog"
+    },
+    "/publicServices/{serviceId}": {
+      "schema": "PublicService",
+      "description": "Guidance catalog for public digital services (Aadhaar, PAN, certificates)"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "Citizen conversation threads with AI Assistant"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Individual messages in a consultation thread"
+    },
+    "/assistanceSessions/{sessionId}": {
+      "schema": "AssistanceSession",
+      "description": "Guided application preparation and tracking records"
+    },
+    "/schemeApplications/{applicationId}": {
+      "schema": "SchemeApplication",
+      "description": "Individual citizen application journey and verified status"
+    },
+    "/applicationStatusEvents/{eventId}": {
+      "schema": "ApplicationStatusEvent",
+      "description": "Auditable log of status changes"
+    },
+    "/schemeEvents/{eventId}": {
+      "schema": "SchemeEngagementEvent",
+      "description": "Citizen engagement events for authoritative analytics"
+    },
+    "/savedSchemes/{savedId}": {
+      "schema": "SavedScheme",
+      "description": "Citizen bookmarks for schemes"
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "UserFeedback",
+      "description": "Citizen feedback and satisfaction reviews"
+    },
+    "/adminUsers/{userId}": {
+      "schema": "AdminRecord",
+      "description": "Designated administrator credentials and assigned roles"
+    },
+    "/admins/{userId}": {
+      "schema": "AdminRecord",
+      "description": "Legacy admin records mapping"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AdminAuditLog",
+      "description": "Administrative actions audit log"
+    },
+    "/systemMetrics/{metricId}": {
+      "schema": "SystemMetric",
+      "description": "Authoritative aggregated statistics for public impact and admin metrics"
+    }
+  }
+}

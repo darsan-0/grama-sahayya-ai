@@ -1,0 +1,277 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Authentication & Identification Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Role-Based Access Control (RBAC)
+    function isBootstrappedSuperAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'mannemdarsan@gmail.com') ||
+        (exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role == 'super_admin' &&
+         get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isActive == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isSuperAdmin() {
+      return isBootstrappedSuperAdmin();
+    }
+
+    function isSchemeReviewer() {
+      return isSuperAdmin() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role == 'scheme_reviewer' &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isActive == true
+      );
+    }
+
+    function isSupportStaff() {
+      return isSuperAdmin() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role == 'support_staff' &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isActive == true
+      );
+    }
+
+    function isAnalyticsViewer() {
+      return isSuperAdmin() || isSchemeReviewer() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role == 'analytics_viewer' &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isActive == true
+      );
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || isSchemeReviewer() || isSupportStaff() || isAnalyticsViewer();
+    }
+
+    // Validations
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() <= 128
+        && data.preferredLanguage is string && data.preferredLanguage.size() <= 32
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128))
+        && (!('state' in data) || (data.state is string && data.state.size() <= 64))
+        && (!('district' in data) || (data.district is string && data.district.size() <= 64));
+    }
+
+    function isValidScheme(data) {
+      return data.schemeId is string && data.schemeId.size() <= 128
+        && data.officialName is string && data.officialName.size() <= 256
+        && data.department is string && data.department.size() <= 128
+        && data.verificationStatus in ['verified', 'pending_review', 'stale']
+        && data.published is bool;
+    }
+
+    function isValidPublicService(data) {
+      return data.serviceId is string && data.serviceId.size() <= 128
+        && data.name is string && data.name.size() <= 256
+        && data.officialPortal is string && data.officialPortal.size() <= 512;
+    }
+
+    function isValidSession(data) {
+      return data.sessionId is string && data.sessionId.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.schemeId is string && data.schemeId.size() <= 128;
+    }
+
+    function isValidSchemeApplication(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.schemeId is string && data.schemeId.size() <= 128
+        && data.status in [
+          'assistance_started',
+          'eligibility_checked',
+          'application_in_progress',
+          'externally_redirected',
+          'submitted_self_reported',
+          'submitted_verified',
+          'pending_verified',
+          'approved_verified',
+          'rejected_verified',
+          'status_unknown'
+        ]
+        && data.statusSource in [
+          'citizen_self_reported',
+          'authorized_integration',
+          'guidance_workflow',
+          'admin_verified'
+        ];
+    }
+
+    function isValidFeedback(data) {
+      return data.feedbackId is string && data.feedbackId.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.message is string && data.message.size() <= 3000;
+    }
+
+    // 1. Citizen Profiles
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId && incoming().userId == userId && isValidUserProfile(incoming());
+      allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin())
+        && isValidUserProfile(incoming())
+        && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+
+      // PII isolation
+      match /private/{docId} {
+        allow read, write: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      }
+    }
+
+    // 2. Schemes (Public read for published; write by scheme_reviewer and super_admin)
+    match /schemes/{schemeId} {
+      allow get: if (resource != null && resource.data.published == true) || isAdmin();
+      allow list: if (resource.data.published == true) || isAdmin();
+      allow create, update, delete: if isSchemeReviewer() && isValidScheme(incoming());
+    }
+
+    // 3. Public Digital Services (Guidance)
+    match /publicServices/{serviceId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSchemeReviewer() && isValidPublicService(incoming());
+    }
+
+    // 4. Conversations & Messages
+    match /conversations/{conversationId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isSupportStaff());
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn() && (
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.userId == request.auth.uid
+          || isSupportStaff()
+        );
+        allow create: if isSignedIn() && (
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.userId == request.auth.uid
+        );
+        allow update, delete: if isSuperAdmin();
+      }
+    }
+
+    // 5. Guided Assistance Sessions
+    match /assistanceSessions/{sessionId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isSupportStaff());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isSupportStaff());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidSession(incoming());
+      allow update: if isSignedIn() && (
+        (resource.data.userId == request.auth.uid && incoming().userId == existing().userId
+          && isValidSession(incoming())
+          && (
+            isSuperAdmin() ||
+            !(incoming().status in ['submission_verified', 'approved_verified', 'rejected_verified']) ||
+            incoming().status == existing().status
+          )
+        ) || isSupportStaff()
+      );
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+    }
+
+    // 6. Real Scheme Applications (Auditable Journey)
+    match /schemeApplications/{applicationId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidSchemeApplication(incoming());
+      allow update: if isSignedIn() && (
+        // Citizen can update their own application progress up to self-reported submission
+        (resource.data.userId == request.auth.uid && incoming().userId == existing().userId
+          && isValidSchemeApplication(incoming())
+          && (
+            isSuperAdmin() ||
+            !(incoming().status in ['submitted_verified', 'approved_verified', 'rejected_verified']) ||
+            incoming().status == existing().status
+          )
+        ) || isSuperAdmin() || isSupportStaff()
+      );
+      allow delete: if isSuperAdmin();
+    }
+
+    // 7. Application Status Events (Audit History)
+    match /applicationStatusEvents/{eventId} {
+      allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (incoming().userId == request.auth.uid || isAdmin());
+      allow update, delete: if false; // Immutable audit trail
+    }
+
+    // 8. Engagement Events (Analytics Tracking)
+    match /schemeEvents/{eventId} {
+      allow get, list: if isAnalyticsViewer();
+      allow create: if incoming().eventType is string && incoming().eventType.size() <= 64;
+      allow update, delete: if false; // Immutable event stream
+    }
+
+    // 9. Saved Schemes (Bookmarks)
+    match /savedSchemes/{savedId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+    }
+
+    // 10. Citizen Feedback
+    match /feedback/{feedbackId} {
+      allow get, list: if isSupportStaff();
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidFeedback(incoming());
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // 11. Administrator Records & RBAC
+    match /adminUsers/{userId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /admins/{userId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // 12. Security Audit Logs
+    match /auditLogs/{logId} {
+      allow get, list: if isSuperAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false; // Immutable audit logs
+    }
+
+    // 13. Public & Admin Aggregated System Metrics
+    match /systemMetrics/{metricId} {
+      allow get, list: if true;
+      allow write: if isSuperAdmin() || isAnalyticsViewer();
+    }
+
+    // 14. Daily Analytics Aggregates
+    match /analyticsDaily/{documentId} {
+      allow get, list: if isAnalyticsViewer();
+      allow write: if isSuperAdmin() || isAnalyticsViewer();
+    }
+  }
+}

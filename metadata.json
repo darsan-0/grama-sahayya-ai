@@ -1,0 +1,6 @@
+{
+  "name": "Grama Sahayya AI",
+  "description": "Government Services, Made Simple for Every Citizen. Discover welfare schemes, check eligibility, get guided application preparation, and access digital public services in Telugu, English, and 22 Indian languages.",
+  "requestFramePermissions": ["geolocation", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
