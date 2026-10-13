@@ -171,30 +171,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </p>
 
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto pt-2">
-            <form onSubmit={handleSearchSubmit} className="relative flex items-center shadow-2xl rounded-2xl overflow-hidden bg-white">
-              <div className="pl-4 text-stone-400">
-                <Search className="w-5 h-5 text-emerald-800" />
+          <div className="max-w-2xl mx-auto pt-2 w-full">
+            <form onSubmit={handleSearchSubmit} className="relative flex items-center shadow-2xl rounded-2xl bg-white w-full">
+              <div className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none flex items-center justify-center">
+                <Search className="w-5 h-5 text-emerald-800 shrink-0" />
               </div>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={t('searchPlaceholder')}
-                className="w-full py-4 pl-3 pr-28 text-stone-900 text-sm sm:text-base focus:outline-none placeholder-stone-400"
+                className="w-full h-13 sm:h-14 pl-11 sm:pl-12 pr-26 sm:pr-32 text-stone-900 text-sm sm:text-base rounded-2xl focus:outline-none placeholder-stone-400"
               />
               <button
                 type="submit"
-                className="absolute right-2 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm transition-all shadow-md cursor-pointer flex items-center space-x-1"
+                className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold px-3 sm:px-5 h-10 sm:h-10.5 rounded-xl text-xs sm:text-sm transition-all shadow-md cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap"
               >
                 <span>{t('searchButton')}</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 shrink-0" />
               </button>
             </form>
 
             {/* Quick suggested searches */}
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-3 text-xs text-emerald-200">
-              <span className="font-semibold text-amber-300">{t('quickSearch')}</span>
+            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 pt-3 text-xs text-emerald-200">
+              <span className="font-semibold text-amber-300 shrink-0">{t('quickSearch')}</span>
               {(isTe
                 ? ['విద్యా దీవెన', 'రైతు భరోసా', 'ఆరోగ్యశ్రీ', 'పింఛన్', 'ఆధార్', 'పాన్ కార్డు']
                 : ['Vidya Deevena (Fee)', 'Rythu Bharosa', 'Aarogyasri Health', 'Pensions', 'Aadhaar Update', 'PAN Card']
@@ -206,7 +206,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     onSearchQuery(q.split(' ')[0]);
                     onNavigateTab('schemes');
                   }}
-                  className="bg-emerald-950/60 hover:bg-emerald-800 border border-emerald-700 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                  className="h-7 inline-flex items-center justify-center bg-emerald-950/60 hover:bg-emerald-800 border border-emerald-700 px-2.5 rounded-full transition-colors cursor-pointer shrink-0 text-xs leading-none"
                 >
                   {q}
                 </button>
@@ -215,19 +215,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Quick Action Buttons */}
-          <div className="pt-4 flex flex-wrap justify-center gap-3">
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md mx-auto sm:max-w-none">
             <button
               onClick={() => onNavigateTab('chat')}
-              className="bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold px-6 py-3 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 cursor-pointer flex items-center space-x-2 text-sm sm:text-base"
+              className="w-full sm:w-auto min-h-[48px] bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold px-6 py-2.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 cursor-pointer inline-flex items-center justify-center gap-2.5 text-sm sm:text-base text-center leading-snug shrink-0"
             >
-              <Mic className="w-5 h-5" />
+              <Mic className="w-5 h-5 shrink-0" />
               <span>{t('askAiHero')}</span>
             </button>
             <button
               onClick={() => onOpenEligibility()}
-              className="bg-emerald-800/80 hover:bg-emerald-700 text-white font-semibold px-6 py-3 rounded-xl border border-emerald-600 shadow-md transition-all cursor-pointer flex items-center space-x-2 text-sm sm:text-base"
+              className="w-full sm:w-auto min-h-[48px] bg-emerald-800/90 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 rounded-xl border border-emerald-600 shadow-md transition-all cursor-pointer inline-flex items-center justify-center gap-2.5 text-sm sm:text-base text-center leading-snug shrink-0"
             >
-              <CheckCircle2 className="w-5 h-5 text-amber-300" />
+              <CheckCircle2 className="w-5 h-5 shrink-0 text-amber-300" />
               <span>{t('myEligibilityHero')}</span>
             </button>
           </div>

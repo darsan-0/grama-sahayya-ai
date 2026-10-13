@@ -66,40 +66,40 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-emerald-900 text-white shadow-md border-b border-emerald-800">
       {/* Top micro bar for citizen trust */}
-      <div className="bg-emerald-950 px-4 py-1 text-xs text-emerald-200 flex justify-between items-center border-b border-emerald-800/60">
-        <div className="flex items-center space-x-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span>
+      <div className="bg-emerald-950 px-3 sm:px-4 py-1 text-[11px] sm:text-xs text-emerald-200 flex justify-between items-center border-b border-emerald-800/60 overflow-hidden">
+        <div className="flex items-center gap-2 truncate min-w-0">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+          <span className="truncate">
             {isTe
               ? 'గ్రామ సహాయ AI — పౌర సంక్షేమ సేవల వేదిక (ఆంధ్రప్రదేశ్ & కేంద్రం)'
               : 'Grama Sahayya AI — Citizen Public Service Facilitation Portal (Andhra Pradesh & All-India)'}
           </span>
         </div>
-        <div className="hidden sm:flex items-center space-x-4 text-emerald-300">
+        <div className="hidden sm:flex items-center space-x-4 text-emerald-300 shrink-0">
           <span>Helpline: <strong>1902</strong> / <strong>1947</strong></span>
           <span className="text-emerald-500">|</span>
           <span>{isTe ? 'రహస్య సమాచారం సేకరణ లేదు' : 'Zero Sensitive Biometrics Collected'}</span>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-18">
           {/* Brand Logo */}
           <button
             onClick={() => setCurrentTab('landing')}
-            className="flex items-center space-x-3 text-left focus:outline-none group cursor-pointer"
+            className="flex items-center gap-2 sm:gap-3 text-left focus:outline-none group cursor-pointer shrink-0 min-w-0"
           >
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 flex items-center justify-center shadow-lg border border-amber-300/40 text-white font-bold text-xl group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 flex items-center justify-center shadow-lg border border-amber-300/40 text-white font-bold text-base sm:text-xl group-hover:scale-105 transition-transform shrink-0">
               GS
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-lg sm:text-xl tracking-tight text-white">Grama Sahayya AI</span>
-                <span className="bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-bold text-sm sm:text-xl tracking-tight text-white whitespace-nowrap">Grama Sahayya AI</span>
+                <span className="hidden sm:inline-flex bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0">
                   {isTe ? 'గ్రామ సహాయ' : 'Citizen Portal'}
                 </span>
               </div>
-              <p className="text-xs text-emerald-200 truncate max-w-[200px] sm:max-w-xs">
+              <p className="hidden md:block text-xs text-emerald-200 truncate max-w-[200px] sm:max-w-xs">
                 {t('tagline')}
               </p>
             </div>
@@ -129,19 +129,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Controls: Language, Simple Mode, Profile */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Simple Mode Toggle */}
             <button
               onClick={toggleSimpleMode}
               title={isSimpleMode ? 'Switch to Standard Mode' : 'Switch to Accessible Simple Mode'}
-              className={`p-2 rounded-lg flex items-center space-x-1.5 text-xs font-semibold border transition-all cursor-pointer ${
+              className={`h-9 px-2 sm:px-2.5 rounded-lg inline-flex items-center justify-center gap-1.5 text-xs font-semibold border transition-all cursor-pointer shrink-0 ${
                 isSimpleMode
                   ? 'bg-amber-500 text-emerald-950 border-amber-300 shadow-md ring-2 ring-amber-300'
                   : 'bg-emerald-800/80 text-emerald-200 border-emerald-700 hover:bg-emerald-800'
               }`}
             >
-              <Accessibility className="w-4 h-4" />
-              <span className="hidden md:inline">{isSimpleMode ? 'Simple Mode ON' : 'Simple Mode'}</span>
+              <Accessibility className="w-4 h-4 shrink-0" />
+              <span className="hidden md:inline whitespace-nowrap">{isSimpleMode ? 'Simple Mode ON' : 'Simple Mode'}</span>
             </button>
 
             {/* Voice Narration Audio Toggle */}
@@ -152,7 +152,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? (isTe ? 'వాయిస్ వివరణ ఆన్ చేయబడింది (ఆపడానికి క్లిక్ చేయండి)' : 'Voice narration is ON (Click to mute)')
                   : (isTe ? 'వాయిస్ వివరణ ఆఫ్ చేయబడింది (వినడానికి క్లిక్ చేయండి)' : 'Voice narration is OFF (Click to enable)')
               }
-              className={`p-2 rounded-lg flex items-center space-x-1.5 text-xs font-semibold border transition-all cursor-pointer ${
+              className={`h-9 px-2 sm:px-2.5 rounded-lg inline-flex items-center justify-center gap-1.5 text-xs font-semibold border transition-all cursor-pointer shrink-0 ${
                 voiceNarrationEnabled
                   ? 'bg-amber-400 text-emerald-950 border-amber-300 shadow-sm ring-1 ring-amber-300'
                   : 'bg-emerald-900/70 text-emerald-300 border-emerald-800 hover:bg-emerald-800'
@@ -160,11 +160,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="Toggle Voice Narration"
             >
               {voiceNarrationEnabled ? (
-                <Volume2 className={`w-4 h-4 ${isSpeaking ? 'animate-pulse text-rose-900' : 'text-emerald-950'}`} />
+                <Volume2 className={`w-4 h-4 shrink-0 ${isSpeaking ? 'animate-pulse text-rose-900' : 'text-emerald-950'}`} />
               ) : (
-                <VolumeX className="w-4 h-4 text-emerald-400" />
+                <VolumeX className="w-4 h-4 shrink-0 text-emerald-400" />
               )}
-              <span className="hidden sm:inline">
+              <span className="hidden sm:inline whitespace-nowrap">
                 {voiceNarrationEnabled
                   ? (isTe ? (isSpeaking ? 'వివరణ...' : 'వాయిస్ ఆన్') : (isSpeaking ? 'Speaking...' : 'Voice ON'))
                   : (isTe ? 'వాయిస్ ఆఫ్' : 'Voice OFF')}
@@ -172,13 +172,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {/* Language Dropdown (22 Scheduled Indian Languages) */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 onClick={() => setLangMenuOpen(!langMenuOpen)}
-                className="px-2.5 py-2 rounded-lg bg-emerald-800/90 hover:bg-emerald-800 border border-emerald-700 text-emerald-100 flex items-center space-x-1.5 text-xs font-medium cursor-pointer"
+                className="h-9 px-2 sm:px-2.5 rounded-lg bg-emerald-800/90 hover:bg-emerald-800 border border-emerald-700 text-emerald-100 inline-flex items-center justify-center gap-1.5 text-xs font-medium cursor-pointer shrink-0"
+                aria-label="Select Language"
               >
-                <Languages className="w-4 h-4 text-amber-400" />
-                <span className="font-semibold">
+                <Languages className="w-4 h-4 shrink-0 text-amber-400" />
+                <span className="font-semibold whitespace-nowrap">
                   {availableLanguages.find(l => l.code === currentLanguage)?.nativeName || 'తెలుగు'}
                 </span>
               </button>
@@ -222,12 +223,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Auth / Profile Button */}
             {currentUser ? (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                 <button
                   onClick={onOpenProfile}
-                  className="flex items-center space-x-2 bg-emerald-800 hover:bg-emerald-700/80 px-3 py-1.5 rounded-lg border border-emerald-700 text-xs text-white cursor-pointer"
+                  className="h-9 inline-flex items-center justify-center gap-1.5 bg-emerald-800 hover:bg-emerald-700/80 px-2 sm:px-3 rounded-lg border border-emerald-700 text-xs text-white cursor-pointer shrink-0"
                 >
-                  <div className="w-6 h-6 rounded-full bg-amber-500 text-emerald-950 font-bold flex items-center justify-center text-xs">
+                  <div className="w-5 h-5 rounded-full bg-amber-500 text-emerald-950 font-bold flex items-center justify-center text-[10px] shrink-0">
                     {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : 'C'}
                   </div>
                   <span className="hidden sm:inline font-medium truncate max-w-[100px]">
@@ -237,17 +238,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={logout}
                   title="Sign Out"
-                  className="p-2 text-emerald-300 hover:text-rose-400 rounded-lg hover:bg-emerald-800 cursor-pointer"
+                  className="h-9 w-9 inline-flex items-center justify-center text-emerald-300 hover:text-rose-400 rounded-lg hover:bg-emerald-800 cursor-pointer shrink-0"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-4 h-4 shrink-0" />
                 </button>
               </div>
             ) : (
               <button
                 onClick={onOpenAuth}
-                className="bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center space-x-1"
+                className="h-9 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold px-2.5 sm:px-3.5 rounded-lg text-xs sm:text-sm shadow-md transition-all cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap"
               >
-                <User className="w-4 h-4" />
+                <User className="w-4 h-4 shrink-0" />
                 <span>{t('login')}</span>
               </button>
             )}
@@ -255,9 +256,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Mobile Menu Hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg text-emerald-200 hover:text-white hover:bg-emerald-800 cursor-pointer"
+              className="lg:hidden h-9 w-9 inline-flex items-center justify-center rounded-lg text-emerald-200 hover:text-white hover:bg-emerald-800 cursor-pointer shrink-0"
+              aria-label="Open menu"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5 shrink-0" /> : <Menu className="w-5 h-5 shrink-0" />}
             </button>
           </div>
         </div>

@@ -471,19 +471,24 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             e.preventDefault();
             handleSendMessage();
           }}
-          className="flex items-center space-x-2"
+          className="flex items-center gap-2"
         >
           <button
             type="button"
             onClick={handleVoiceToggle}
-            className={`p-3 rounded-xl transition-all cursor-pointer ${
+            className={`w-11 h-11 inline-flex items-center justify-center rounded-xl transition-all cursor-pointer shrink-0 ${
               isListening
                 ? 'bg-rose-600 text-white voice-pulsing'
                 : 'bg-stone-100 hover:bg-stone-200 text-emerald-900'
             }`}
             title="Speak query via microphone"
+            aria-label="Speak query via microphone"
           >
-            {isListening ? <MicOff className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5" />}
+            {isListening ? (
+              <MicOff className="w-5 h-5 shrink-0 animate-spin" />
+            ) : (
+              <Mic className="w-5 h-5 shrink-0" />
+            )}
           </button>
 
           <input
@@ -495,15 +500,16 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                 ? 'ఉదాహరణ: నేను బి.టెక్ విద్యార్థిని, ఏ స్కాలర్‌షిప్ వస్తుంది? లేదా మాట్లాడండి...'
                 : 'Ask a question about scholarships, pensions, farmer welfare, or public certificates...'
             }
-            className="flex-1 px-3 py-3 text-sm focus:outline-none placeholder-stone-400"
+            className="flex-1 h-11 px-3 text-sm focus:outline-none placeholder-stone-400 bg-stone-50/50 rounded-xl border border-stone-200/80"
           />
 
           <button
             type="submit"
             disabled={!inputQuery.trim() || loading}
-            className="bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold p-3 rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-40"
+            className="w-11 h-11 inline-flex items-center justify-center bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-40 shrink-0"
+            aria-label="Send message"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-5 h-5 shrink-0" />
           </button>
         </form>
 

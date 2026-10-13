@@ -118,18 +118,18 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
 
         {/* Search input in catalog */}
         <div className="relative max-w-md w-full">
-          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none shrink-0" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isTe ? 'పథకం పేరు, విద్యార్థి, రైతు, పింఛన్...' : 'Search by name, student, farmer, pension...'}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-stone-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 shadow-2xs"
+            className="w-full h-10 pl-9 pr-14 rounded-xl border border-stone-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 shadow-2xs"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-3 text-xs text-stone-400 hover:text-stone-700 cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 px-1.5 inline-flex items-center justify-center text-xs text-stone-400 hover:text-stone-700 cursor-pointer rounded"
             >
               Clear
             </button>
@@ -138,9 +138,9 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
       </div>
 
       {/* Filter Chips Bar */}
-      <div className="flex flex-wrap items-center gap-2 pt-1">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
         {/* Gov Level buttons */}
-        <div className="flex items-center space-x-1 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
           {[
             { id: 'all', label: isTe ? 'అన్నీ' : 'All Levels' },
             { id: 'state', label: isTe ? 'ఆంధ్రప్రదేశ్ ప్రభుత్వం' : 'AP State Govt' },
@@ -149,7 +149,7 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
             <button
               key={lvl.id}
               onClick={() => setSelectedGovLevel(lvl.id)}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`h-8 px-2.5 sm:px-3 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center shrink-0 whitespace-nowrap leading-none ${
                 selectedGovLevel === lvl.id
                   ? 'bg-emerald-900 text-amber-300 font-bold shadow-xs'
                   : 'text-stone-600 hover:text-stone-900'
@@ -161,12 +161,12 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
         </div>
 
         {/* Category Dropdown */}
-        <div className="flex items-center space-x-1.5 ml-auto">
-          <Filter className="w-4 h-4 text-stone-500" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Filter className="w-4 h-4 text-stone-500 shrink-0" />
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="text-xs font-semibold bg-white border border-stone-300 rounded-xl px-3 py-2 text-stone-700 focus:outline-none cursor-pointer"
+            className="h-8 text-xs font-semibold bg-white border border-stone-300 rounded-xl px-2.5 text-stone-700 focus:outline-none cursor-pointer"
           >
             <option value="all">{isTe ? 'అన్ని విభాగాలు' : 'All Categories'}</option>
             <option value="education">{isTe ? 'విద్య & స్కాలర్‌షిప్‌లు' : 'Education & Scholarships'}</option>

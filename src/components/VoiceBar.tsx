@@ -81,21 +81,25 @@ export const VoiceBar: React.FC<VoiceBarProps> = ({
   const isTe = currentLanguage === 'te';
 
   return (
-    <div className="bg-amber-50/90 border-y border-amber-200/80 px-4 py-2.5 shadow-xs">
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+    <div className="bg-amber-50/90 border-y border-amber-200/80 px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
         {/* Left: Prominent Voice Microphone Trigger */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={handleMicToggle}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-full font-bold text-sm transition-all shadow-md cursor-pointer ${
+            className={`h-9 inline-flex items-center justify-center gap-2 px-3.5 rounded-full font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer shrink-0 whitespace-nowrap leading-none ${
               isListening
                 ? 'bg-rose-600 text-white voice-pulsing'
                 : 'bg-emerald-800 hover:bg-emerald-700 text-white'
             }`}
             title={isTe ? 'వాయిస్ ద్వారా మాట్లాడండి' : 'Click to speak via microphone'}
           >
-            {isListening ? <MicOff className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5 text-amber-300" />}
-            <span>
+            {isListening ? (
+              <MicOff className="w-4.5 h-4.5 shrink-0 animate-spin" />
+            ) : (
+              <Mic className="w-4.5 h-4.5 shrink-0 text-amber-300" />
+            )}
+            <span className="leading-tight">
               {isListening
                 ? (isTe ? 'వింటున్నాము...' : 'Listening...')
                 : (isTe ? 'వాయిస్ ద్వారా మాట్లాడండి' : 'Voice Input')}
@@ -104,19 +108,19 @@ export const VoiceBar: React.FC<VoiceBarProps> = ({
 
           {/* Transcript Preview */}
           {transcriptPreview && (
-            <div className="text-xs font-medium text-stone-700 bg-white px-3 py-1.5 rounded-lg border border-amber-300 flex items-center space-x-1.5 max-w-xs sm:max-w-md truncate">
+            <div className="h-9 text-xs font-medium text-stone-700 bg-white px-3 rounded-lg border border-amber-300 inline-flex items-center gap-1.5 max-w-[180px] sm:max-w-md truncate shrink-0">
               <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span className="truncate">{transcriptPreview}</span>
+              <span className="truncate leading-tight">{transcriptPreview}</span>
             </div>
           )}
         </div>
 
         {/* Right: Audio Playback Controls */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {/* Voice Narration Master Toggle */}
           <button
             onClick={toggleVoiceNarration}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+            className={`h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-lg text-xs font-bold border transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap ${
               voiceNarrationEnabled
                 ? 'bg-amber-300 hover:bg-amber-400 text-emerald-950 border-amber-400 shadow-xs'
                 : 'bg-white hover:bg-stone-50 text-stone-600 border-stone-200'
@@ -127,9 +131,15 @@ export const VoiceBar: React.FC<VoiceBarProps> = ({
                 : (isTe ? 'వాయిస్ వివరణ ఆఫ్ చేయబడింది (వినడానికి క్లిక్ చేయండి)' : 'Voice narration is OFF (Click to turn on)')
             }
           >
-            {voiceNarrationEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-950" /> : <VolumeX className="w-3.5 h-3.5 text-stone-400" />}
-            <span>{isTe ? 'వాయిస్ వివరణ' : 'Voice Narration'}</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${voiceNarrationEnabled ? 'bg-emerald-950 text-amber-300' : 'bg-stone-200 text-stone-600'}`}>
+            {voiceNarrationEnabled ? (
+              <Volume2 className="w-4 h-4 shrink-0 text-emerald-950" />
+            ) : (
+              <VolumeX className="w-4 h-4 shrink-0 text-stone-400" />
+            )}
+            <span className="leading-tight">{isTe ? 'వాయిస్ వివరణ' : 'Voice Narration'}</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold leading-none ${
+              voiceNarrationEnabled ? 'bg-emerald-950 text-amber-300' : 'bg-stone-200 text-stone-600'
+            }`}>
               {voiceNarrationEnabled ? 'ON' : 'OFF'}
             </span>
           </button>
@@ -138,38 +148,39 @@ export const VoiceBar: React.FC<VoiceBarProps> = ({
           {isSpeaking ? (
             <button
               onClick={stopSpeaking}
-              className="flex items-center space-x-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 px-3 py-1.5 rounded-lg text-xs font-bold border border-rose-300 cursor-pointer"
+              className="h-8.5 sm:h-9 inline-flex items-center justify-center gap-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 px-2.5 sm:px-3 rounded-lg text-xs font-bold border border-rose-300 cursor-pointer shrink-0 whitespace-nowrap"
             >
-              <Square className="w-3.5 h-3.5 fill-current" />
-              <span>{isTe ? 'వాయిస్ ఆపండి' : 'Stop Audio'}</span>
+              <Square className="w-3.5 h-3.5 shrink-0 fill-current" />
+              <span className="leading-tight">{isTe ? 'వాయిస్ ఆపండి' : 'Stop Audio'}</span>
             </button>
           ) : (
             <button
               onClick={handleRepeatSpeech}
-              className="flex items-center space-x-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-300 cursor-pointer"
+              className="h-8.5 sm:h-9 inline-flex items-center justify-center gap-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 px-2.5 sm:px-3 rounded-lg text-xs font-semibold border border-emerald-300 cursor-pointer shrink-0 whitespace-nowrap"
               title="Repeat last response or introduction aloud"
             >
-              <Volume2 className="w-3.5 h-3.5 text-emerald-700" />
-              <span>{isTe ? 'వాయిస్‌లో చదవండి' : 'Read Aloud'}</span>
+              <Volume2 className="w-4 h-4 shrink-0 text-emerald-700" />
+              <span className="leading-tight">{isTe ? 'వాయిస్‌లో చదవండి' : 'Read Aloud'}</span>
             </button>
           )}
 
           {/* Repeat */}
           <button
             onClick={handleRepeatSpeech}
-            className="p-1.5 bg-white hover:bg-stone-100 text-stone-700 rounded-lg border border-stone-200 cursor-pointer"
+            className="h-8.5 sm:h-9 w-8.5 sm:w-9 inline-flex items-center justify-center bg-white hover:bg-stone-100 text-stone-700 rounded-lg border border-stone-200 cursor-pointer shrink-0"
             title="Repeat audio"
+            aria-label="Repeat audio"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-4 h-4 shrink-0" />
           </button>
 
           {/* Speech Rate Selector */}
-          <div className="flex items-center space-x-1 bg-white px-2 py-1 rounded-lg border border-stone-200 text-xs text-stone-600">
-            <Gauge className="w-3.5 h-3.5 text-stone-500" />
+          <div className="h-8.5 sm:h-9 inline-flex items-center justify-center gap-1.5 bg-white px-2.5 rounded-lg border border-stone-200 text-xs text-stone-600 shrink-0">
+            <Gauge className="w-4 h-4 shrink-0 text-stone-500" />
             <select
               value={speechRate}
               onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
-              className="bg-transparent font-medium focus:outline-none cursor-pointer"
+              className="bg-transparent font-medium focus:outline-none cursor-pointer py-1"
               aria-label="Speech speed"
             >
               <option value="0.75">0.75x Slow</option>
@@ -179,7 +190,7 @@ export const VoiceBar: React.FC<VoiceBarProps> = ({
           </div>
 
           {/* Capability indicator */}
-          <div className="hidden lg:flex items-center text-[11px] text-stone-500">
+          <div className="hidden lg:inline-flex items-center text-[11px] text-stone-500 shrink-0">
             <span>Voice: {currentLangInfo.name} ({currentLangInfo.nativeName})</span>
           </div>
         </div>
