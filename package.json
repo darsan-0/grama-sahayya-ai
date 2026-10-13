@@ -10,7 +10,7 @@
     "build": "vite build && npm run build:server",
     "start": "node server.js",
     "preview": "vite preview",
-    "test": "tsx tests/eligibility_and_security.test.ts && tsx tests/auth_and_analytics.test.ts",
+    "test": "tsx tests/eligibility_and_security.test.ts && tsx tests/auth_and_analytics.test.ts && tsx tests/multilingual_chat.test.ts",
     "clean": "node -e \"import('fs').then(f => { f.rmSync('dist', {recursive: true, force: true}); f.rmSync('server.js', {force: true}); });\"",
     "lint": "tsc --noEmit"
   },

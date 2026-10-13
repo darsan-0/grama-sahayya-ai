@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { VERIFIED_SCHEMES } from './src/data/schemes.ts';
 import { VERIFIED_PUBLIC_SERVICES } from './src/data/publicServices.ts';
+import { detectMessageLanguage } from './src/utils/languageDetector.ts';
 
 dotenv.config();
 
@@ -87,6 +88,11 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Message text is required' });
     }
 
+    // Automatically detect language of citizen's latest query
+    const detected = detectMessageLanguage(message, language);
+    const detectedLang = detected.detectedLang; // 'te' | 'en' | 'te-mixed' | 'hi'
+    const responseLanguageCode = detected.languageCode; // 'te' | 'en' | 'hi'
+
     // Build RAG Grounding Context from verified database
     const schemesContext = VERIFIED_SCHEMES.map(s => `
 [SCHEME ID: ${s.id}]
@@ -126,7 +132,7 @@ Helpline: ${p.supportHelpline || 'N/A'}
 
     const profileContext = citizenProfile ? `
 CITIZEN PROFILE:
-- Preferred Language: ${citizenProfile.preferredLanguage || language}
+- Preferred Language: ${citizenProfile.preferredLanguage || responseLanguageCode}
 - State: ${citizenProfile.state || 'Andhra Pradesh'}
 - District: ${citizenProfile.district || 'Not specified'}
 - Location: ${citizenProfile.locationType || 'rural'}
@@ -139,20 +145,45 @@ CITIZEN PROFILE:
 - Is Farmer: ${citizenProfile.isFarmer ? 'Yes' : 'No'}
 ` : 'CITIZEN PROFILE: Anonymous visitor (no demographic profile loaded yet).';
 
+    let languageInstruction = '';
+    if (detectedLang === 'en') {
+      languageInstruction = `The citizen asked this query in ENGLISH ("${message}").
+- You MUST formulate your entire conversational response in clear, simple, respectful ENGLISH.
+- Mention the Telugu name in parentheses alongside the official English name (e.g., "**Jagananna Vidya Deevena** (జగనన్న విద్యా దీవెన)"), but write all explanations, eligibility rules, and instructions in ENGLISH.
+- Even if previous messages in the conversation history were in Telugu or another language, the citizen's LATEST message is in English, so you MUST respond in ENGLISH.`;
+    } else if (detectedLang === 'te') {
+      languageInstruction = `The citizen asked this query in TELUGU SCRIPT ("${message}").
+- You MUST formulate your entire response in authentic, polite, and natural TELUGU (గౌరవప్రదమైన సహజ తెలుగు).
+- Keep official scheme titles recognizable (e.g., "**జగనన్న విద్యా దీవెన** (Jagananna Vidya Deevena)").
+- Even if previous messages in the conversation history were in English, the citizen's LATEST message is in Telugu, so you MUST respond in TELUGU.`;
+    } else if (detectedLang === 'te-mixed') {
+      languageInstruction = `The citizen asked this query in TELUGU-ENGLISH MIXED / CODE-SWITCHED format ("${message}").
+- Respond in natural, accessible, friendly bilingual Telugu / code-mixed Telugu-English that directly matches the citizen's conversational style.
+- Use Telugu script or clear mixed Telugu-English with common official terms (e.g., "Application Portal", "Aadhaar Card", "College Allotment Order", "Tuition Fee Reimbursement", "Meeseva", "Village/Ward Secretariat") kept intact.
+- Even if previous messages were in another language, adapt to this latest code-mixed query.`;
+    } else {
+      languageInstruction = `Respond in the citizen's query language ("${detectedLang}"). Match their tone, preserve official scheme titles and portal URLs.`;
+    }
+
     const systemPrompt = `
 You are "Grama Sahayya AI Assistant" (గ్రామ సహాయ AI సహాయకుడు), an empathetic, truthful, authoritative public welfare assistant for the citizens of India, with deep expertise in Andhra Pradesh state schemes and Central government programs.
 
 ROLE & BEHAVIOR:
-1. Always communicate in the requested language: "${language}" (If Telugu 'te', write in natural, respectful Telugu. If English 'en', use simple, clear Indian English. Understand Telugu-English code-switching seamlessly).
+1. DYNAMIC MULTILINGUAL RESPONSE (LATEST MESSAGE MATCHING):
+   ${languageInstruction}
+   - CRITICAL: Never force a fixed language. Base your reply language STRICTLY on the language of the user's LATEST message.
+   - For follow-up questions, always switch to the language of the latest user query, even if earlier messages used a different language.
+
 2. TRUTHFULNESS & GROUNDING: Ground your recommendations STRICTLY in the verified government schemes and public digital services provided below. NEVER invent schemes, eligibility criteria, phone numbers, or official links.
-3. For eligibility: Clearly categorize as:
+3. PRESERVE ACCURATE NAMES & OFFICIAL URLS: Keep government scheme names (e.g., 'Jagananna Vidya Deevena', 'YSR Rythu Bharosa'), official departments, official documents, and official portal URLs (e.g., 'https://jnanabhumi.ap.gov.in', 'https://pmkisan.gov.in', 'https://uidai.gov.in') strictly accurate. Never translate or alter official website URLs.
+4. For eligibility: Clearly categorize as:
    - Likely Eligible (అర్హత ఉండవచ్చు)
    - Potentially Eligible — More Information Needed (మరిన్ని వివరాలు అవసరం)
    - Likely Ineligible (అర్హత లేకపోవచ్చు)
    - Unable to Verify (ధృవీకరించలేకపోయాము)
-4. Never guarantee government approval. Always state that final sanction depends on the competent government department.
-5. Provide actionable next steps: official portals, required documents, and where to apply (Village / Ward Secretariat - గ్రామ/వార్డు సచివాలయం, Meeseva, or official online portal).
-6. Provide interactive follow-up questions when vital criteria (like exact family income, study year, caste certificate, or landholding) are missing.
+5. Never guarantee government approval. Always state that final sanction depends on the competent government department.
+6. Provide actionable next steps: official portals, required documents, and where to apply (Village / Ward Secretariat - గ్రామ/వార్డు సచివాలయం, Meeseva, or official online portal).
+7. Provide interactive follow-up questions when vital criteria (like exact family income, study year, caste certificate, or landholding) are missing.
 
 VERIFIED GOVERNMENT SCHEMES DATASET:
 ${schemesContext}
@@ -203,7 +234,9 @@ ${profileContext}
 
         return res.json({
           reply: replyText,
-          language,
+          language: responseLanguageCode,
+          detectedLanguage: detectedLang,
+          isMixedLanguage: detected.isMixed,
           recommendedSchemeIds,
           timestamp: new Date().toISOString()
         });
@@ -222,17 +255,83 @@ ${profileContext}
       msgLower.includes('రైతు') ||
       msgLower.includes('farmer') ||
       msgLower.includes('pension') ||
-      msgLower.includes('పింఛన్')
+      msgLower.includes('పింఛన్') ||
+      msgLower.includes('deevena') ||
+      msgLower.includes('bharosa') ||
+      msgLower.includes('cheyutha') ||
+      msgLower.includes('aasara') ||
+      msgLower.includes('aarogyasri') ||
+      msgLower.includes('pan') ||
+      msgLower.includes('aadhaar') ||
+      msgLower.includes('ration')
     ) || VERIFIED_SCHEMES[0];
 
-    const isTelugu = language === 'te';
-    const reply = isTelugu
-      ? `నమస్కారం! మీ వినతిని పరిశీలించాము. మీ ప్రశ్నకు సంబంధించి పరిశీలించవలసిన ప్రధాన పథకం: **${matchedScheme.teName}** (${matchedScheme.officialName}).\n\n**ప్రయోజనం:** ${matchedScheme.teBenefitDetails}\n\n**అర్హత నిబంధనలు:**\n${matchedScheme.eligibilityCriteria.teAdditionalRules.map(r => `• ${r}`).join('\n')}\n\n**కావలసిన పత్రాలు:**\n${matchedScheme.teRequiredDocuments.map(d => `• ${d}`).join('\n')}\n\n**దరఖాస్తు విధానం:**\n${matchedScheme.teApplicationSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nఅధికారిక వెబ్‌సైట్: ${matchedScheme.officialApplicationUrl}\nసహాయవాణి: ${matchedScheme.verifiedHelpline || '1902'}\n\n*గమనిక: తుది మంజూరు గ్రామ/వార్డు సచివాలయం మరియు ప్రభుత్వ నిబంధనలకు లోబడి ఉంటుంది.*`
-      : `Hello! Based on your query, here is the verified information for **${matchedScheme.officialName}**:\n\n**Benefits:** ${matchedScheme.benefitDetails}\n\n**Key Eligibility Conditions:**\n${matchedScheme.eligibilityCriteria.additionalRules.map(r => `• ${r}`).join('\n')}\n\n**Required Documents:**\n${matchedScheme.requiredDocuments.map(d => `• ${d}`).join('\n')}\n\n**How to Apply:**\n${matchedScheme.applicationSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nOfficial Portal: ${matchedScheme.officialApplicationUrl}\nHelpline: ${matchedScheme.verifiedHelpline || '1902'}\n\n*Note: Final sanction is subject to official verification by the competent government authority.*`;
+    let reply = '';
+    if (detectedLang === 'en') {
+      reply = `Hello! Based on your query, here is the verified information for **${matchedScheme.officialName}** (${matchedScheme.teName}):
+
+**Benefits:** ${matchedScheme.benefitDetails} (${matchedScheme.benefitAmount || 'N/A'})
+
+**Key Eligibility Conditions:**
+${matchedScheme.eligibilityCriteria.additionalRules.map(r => `• ${r}`).join('\n')}
+
+**Required Documents:**
+${matchedScheme.requiredDocuments.map(d => `• ${d}`).join('\n')}
+
+**How to Apply:**
+${matchedScheme.applicationSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+Official Application Portal: ${matchedScheme.officialApplicationUrl}
+Department: ${matchedScheme.department}
+Helpline: ${matchedScheme.verifiedHelpline || '1902'}
+
+*Note: Final sanction is subject to official verification by the competent government authority.*`;
+    } else if (detectedLang === 'te') {
+      reply = `నమస్కారం! మీ ప్రశ్నకు సంబంధించి ధృవీకరించబడిన సమాచారం: **${matchedScheme.teName}** (${matchedScheme.officialName}).
+
+**ప్రయోజనం:** ${matchedScheme.teBenefitDetails}
+
+**అర్హత నిబంధనలు:**
+${matchedScheme.eligibilityCriteria.teAdditionalRules.map(r => `• ${r}`).join('\n')}
+
+**కావలసిన పత్రాలు:**
+${matchedScheme.teRequiredDocuments.map(d => `• ${d}`).join('\n')}
+
+**దరఖాస్తు విధానం:**
+${matchedScheme.teApplicationSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+అధికారిక వెబ్‌సైట్: ${matchedScheme.officialApplicationUrl}
+శాఖ: ${matchedScheme.department}
+సహాయవాణి: ${matchedScheme.verifiedHelpline || '1902'}
+
+*గమనిక: తుది మంజూరు గ్రామ/వార్డు సచివాలయం మరియు ప్రభుత్వ నిబంధనలకు లోబడి ఉంటుంది.*`;
+    } else {
+      // te-mixed / code-mixed response
+      reply = `నమస్కారం! మీ ప్రశ్నకు సంబంధించి **${matchedScheme.teName}** (${matchedScheme.officialName}) వివరాలు:
+
+**ప్రయోజనం (Benefit Details):** ${matchedScheme.benefitDetails} (${matchedScheme.benefitAmount || 'N/A'})
+
+**అర్హత నిబంధనలు (Key Eligibility Conditions):**
+${matchedScheme.eligibilityCriteria.additionalRules.map(r => `• ${r}`).join('\n')}
+
+**కావలసిన పత్రాలు (Required Documents):**
+${matchedScheme.requiredDocuments.map(d => `• ${d}`).join('\n')}
+
+**దరఖాస్తు విధానం (Application Process):**
+${matchedScheme.applicationSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+Official Application Portal: ${matchedScheme.officialApplicationUrl}
+Department: ${matchedScheme.department}
+Helpline: ${matchedScheme.verifiedHelpline || '1902'}
+
+*గమనిక: తుది మంజూరు గ్రామ/వార్డు సచివాలయం మరియు ప్రభుత్వ నిబంధనలకు లోబడి ఉంటుంది (Final approval subject to official verification).*`;
+    }
 
     return res.json({
       reply,
-      language,
+      language: responseLanguageCode,
+      detectedLanguage: detectedLang,
+      isMixedLanguage: detected.isMixed,
       recommendedSchemeIds: [matchedScheme.id],
       timestamp: new Date().toISOString()
     });

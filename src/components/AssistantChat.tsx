@@ -143,9 +143,9 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         language: data.language,
         recommendedSchemeIds: data.recommendedSchemeIds || [],
         timestamp: new Date().toISOString(),
-        suggestedPrompts: currentLanguage === 'te'
-          ? ['కావలసిన డాక్యుమెంట్లు ఏమిటి?', 'ఎక్కడ దరఖాస్తు చేసుకోవాలి?', 'ఈ పథకానికి దరఖాస్తు సిద్ధం చేయండి']
-          : ['What documents are required?', 'Where do I submit this?', 'Help me prepare application']
+        suggestedPrompts: (data.language || currentLanguage) === 'en'
+          ? ['What documents are required?', 'Where do I submit this?', 'Help me prepare application']
+          : ['కావలసిన డాక్యుమెంట్లు ఏమిటి?', 'ఎక్కడ దరఖాస్తు చేసుకోవాలి?', 'ఈ పథకానికి దరఖాస్తు సిద్ధం చేయండి'],
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -153,7 +153,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       // Provide automatic voice narration feedback if voice narration is enabled
       if (voiceNarrationEnabled) {
         setCurrentlyPlayingMsgId(assistantMessage.id);
-        speak(data.reply, currentLanguage, () => {
+        speak(data.reply, data.language || currentLanguage, () => {
           setCurrentlyPlayingMsgId(null);
         });
       }
