@@ -81,49 +81,50 @@ export const VoiceBar: React.FC<VoiceBarProps> = ({
   const isTe = currentLanguage === 'te';
 
   return (
-    <div className="bg-amber-50/90 border-y border-amber-200/80 px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs">
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
-        {/* Left: Prominent Voice Microphone Trigger */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+    <div className="bg-[#FAF9F5] border-b border-[#E5E5DF] px-3 sm:px-6 py-2 transition-colors">
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        {/* Left: Primary Microphone Action & Transcript */}
+        <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={handleMicToggle}
-            className={`h-9 inline-flex items-center justify-center gap-2 px-3.5 rounded-full font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer shrink-0 whitespace-nowrap leading-none ${
+            className={`h-9 px-3.5 rounded-full font-medium text-xs sm:text-xs transition-all cursor-pointer inline-flex items-center justify-center gap-2 shrink-0 ${
               isListening
-                ? 'bg-rose-600 text-white voice-pulsing'
-                : 'bg-emerald-800 hover:bg-emerald-700 text-white'
+                ? 'bg-[#B91C1C] text-white voice-pulsing'
+                : 'bg-[#075B46] hover:bg-[#064B3A] text-white shadow-xs'
             }`}
             title={isTe ? 'వాయిస్ ద్వారా మాట్లాడండి' : 'Click to speak via microphone'}
+            aria-label="Voice input"
           >
             {isListening ? (
-              <MicOff className="w-4.5 h-4.5 shrink-0 animate-spin" />
+              <MicOff className="w-4 h-4 shrink-0 animate-spin" />
             ) : (
-              <Mic className="w-4.5 h-4.5 shrink-0 text-amber-300" />
+              <Mic className="w-4 h-4 shrink-0 text-[#E6B84A]" />
             )}
-            <span className="leading-tight">
+            <span className="font-semibold tracking-tight">
               {isListening
                 ? (isTe ? 'వింటున్నాము...' : 'Listening...')
-                : (isTe ? 'వాయిస్ ద్వారా మాట్లాడండి' : 'Voice Input')}
+                : (isTe ? 'వాయిస్ మాట్లాడండి' : 'Voice Input')}
             </span>
           </button>
 
           {/* Transcript Preview */}
           {transcriptPreview && (
-            <div className="h-9 text-xs font-medium text-stone-700 bg-white px-3 rounded-lg border border-amber-300 inline-flex items-center gap-1.5 max-w-[180px] sm:max-w-md truncate shrink-0">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span className="truncate leading-tight">{transcriptPreview}</span>
+            <div className="h-9 text-xs font-normal text-[#242824] bg-white px-3 rounded-full border border-[#E5E5DF] inline-flex items-center gap-1.5 max-w-[200px] sm:max-w-xs md:max-w-md truncate shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#E6B84A] shrink-0" />
+              <span className="truncate">{transcriptPreview}</span>
             </div>
           )}
         </div>
 
-        {/* Right: Audio Playback Controls */}
+        {/* Right: Cohesive Audio Playback Utility Group */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          {/* Voice Narration Master Toggle */}
+          {/* Voice Narration Master Switch */}
           <button
             onClick={toggleVoiceNarration}
-            className={`h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-lg text-xs font-bold border transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap ${
+            className={`h-9 px-2.5 sm:px-3 rounded-lg text-xs font-medium border transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0 ${
               voiceNarrationEnabled
-                ? 'bg-amber-300 hover:bg-amber-400 text-emerald-950 border-amber-400 shadow-xs'
-                : 'bg-white hover:bg-stone-50 text-stone-600 border-stone-200'
+                ? 'bg-[#EBF3F0] text-[#075B46] border-[#C8DDD6]'
+                : 'bg-white text-[#686B66] border-[#E5E5DF] hover:text-[#242824] hover:bg-[#F8F7F2]'
             }`}
             title={
               voiceNarrationEnabled
@@ -132,13 +133,13 @@ export const VoiceBar: React.FC<VoiceBarProps> = ({
             }
           >
             {voiceNarrationEnabled ? (
-              <Volume2 className="w-4 h-4 shrink-0 text-emerald-950" />
+              <Volume2 className="w-3.5 h-3.5 shrink-0 text-[#075B46]" />
             ) : (
-              <VolumeX className="w-4 h-4 shrink-0 text-stone-400" />
+              <VolumeX className="w-3.5 h-3.5 shrink-0 text-[#8E918C]" />
             )}
-            <span className="leading-tight">{isTe ? 'వాయిస్ వివరణ' : 'Voice Narration'}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold leading-none ${
-              voiceNarrationEnabled ? 'bg-emerald-950 text-amber-300' : 'bg-stone-200 text-stone-600'
+            <span>{isTe ? 'వాయిస్ వివరణ' : 'Voice Narration'}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+              voiceNarrationEnabled ? 'bg-[#075B46] text-white' : 'bg-[#E5E5DF] text-[#686B66]'
             }`}>
               {voiceNarrationEnabled ? 'ON' : 'OFF'}
             </span>
@@ -148,39 +149,39 @@ export const VoiceBar: React.FC<VoiceBarProps> = ({
           {isSpeaking ? (
             <button
               onClick={stopSpeaking}
-              className="h-8.5 sm:h-9 inline-flex items-center justify-center gap-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 px-2.5 sm:px-3 rounded-lg text-xs font-bold border border-rose-300 cursor-pointer shrink-0 whitespace-nowrap"
+              className="h-9 inline-flex items-center justify-center gap-1.5 bg-[#FEF2F2] hover:bg-[#FEE2E2] text-[#991B1B] px-2.5 sm:px-3 rounded-lg text-xs font-medium border border-[#FCA5A5] cursor-pointer shrink-0 transition-colors"
             >
-              <Square className="w-3.5 h-3.5 shrink-0 fill-current" />
-              <span className="leading-tight">{isTe ? 'వాయిస్ ఆపండి' : 'Stop Audio'}</span>
+              <Square className="w-3 h-3 shrink-0 fill-current" />
+              <span>{isTe ? 'ఆపండి' : 'Stop Audio'}</span>
             </button>
           ) : (
             <button
               onClick={handleRepeatSpeech}
-              className="h-8.5 sm:h-9 inline-flex items-center justify-center gap-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 px-2.5 sm:px-3 rounded-lg text-xs font-semibold border border-emerald-300 cursor-pointer shrink-0 whitespace-nowrap"
-              title="Repeat last response or introduction aloud"
+              className="h-9 inline-flex items-center justify-center gap-1.5 bg-white hover:bg-[#F8F7F2] text-[#242824] px-2.5 sm:px-3 rounded-lg text-xs font-medium border border-[#E5E5DF] cursor-pointer shrink-0 transition-colors"
+              title="Read last response or introduction aloud"
             >
-              <Volume2 className="w-4 h-4 shrink-0 text-emerald-700" />
-              <span className="leading-tight">{isTe ? 'వాయిస్‌లో చదవండి' : 'Read Aloud'}</span>
+              <Volume2 className="w-3.5 h-3.5 shrink-0 text-[#075B46]" />
+              <span>{isTe ? 'చదవండి' : 'Read Aloud'}</span>
             </button>
           )}
 
-          {/* Repeat */}
+          {/* Replay Icon Button */}
           <button
             onClick={handleRepeatSpeech}
-            className="h-8.5 sm:h-9 w-8.5 sm:w-9 inline-flex items-center justify-center bg-white hover:bg-stone-100 text-stone-700 rounded-lg border border-stone-200 cursor-pointer shrink-0"
+            className="h-9 w-9 inline-flex items-center justify-center bg-white hover:bg-[#F8F7F2] text-[#686B66] hover:text-[#242824] rounded-lg border border-[#E5E5DF] cursor-pointer shrink-0 transition-colors"
             title="Repeat audio"
             aria-label="Repeat audio"
           >
-            <RotateCcw className="w-4 h-4 shrink-0" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
           {/* Speech Rate Selector */}
-          <div className="h-8.5 sm:h-9 inline-flex items-center justify-center gap-1.5 bg-white px-2.5 rounded-lg border border-stone-200 text-xs text-stone-600 shrink-0">
-            <Gauge className="w-4 h-4 shrink-0 text-stone-500" />
+          <div className="h-9 inline-flex items-center justify-center gap-1.5 bg-white px-2.5 rounded-lg border border-[#E5E5DF] text-xs text-[#686B66] shrink-0">
+            <Gauge className="w-3.5 h-3.5 shrink-0 text-[#8E918C]" />
             <select
               value={speechRate}
               onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
-              className="bg-transparent font-medium focus:outline-none cursor-pointer py-1"
+              className="bg-transparent font-medium text-[#242824] focus:outline-none cursor-pointer py-1 text-xs"
               aria-label="Speech speed"
             >
               <option value="0.75">0.75x Slow</option>
@@ -190,20 +191,22 @@ export const VoiceBar: React.FC<VoiceBarProps> = ({
           </div>
 
           {/* Capability indicator */}
-          <div className="hidden lg:inline-flex items-center text-[11px] text-stone-500 shrink-0">
-            <span>Voice: {currentLangInfo.name} ({currentLangInfo.nativeName})</span>
+          <div className="hidden xl:inline-flex items-center text-[11px] text-[#8E918C] shrink-0 pl-1">
+            <span>{currentLangInfo.name}</span>
           </div>
         </div>
       </div>
 
-      {/* Permission or compatibility error banner */}
+      {/* Permission / compatibility message banner */}
       {errorMessage && (
-        <div className="max-w-7xl mx-auto mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2 rounded-lg flex items-center space-x-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="max-w-7xl mx-auto mt-2 text-xs text-[#991B1B] bg-[#FEF2F2] border border-[#FCA5A5] p-2.5 rounded-lg flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-[#DC2626]" />
+            <span>{errorMessage}</span>
+          </div>
           <button
             onClick={() => setErrorMessage(null)}
-            className="ml-auto underline font-semibold cursor-pointer"
+            className="underline font-semibold cursor-pointer shrink-0 text-xs"
           >
             Dismiss
           </button>

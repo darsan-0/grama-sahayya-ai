@@ -97,19 +97,19 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E5E5DF] pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 flex items-center space-x-2">
+          <h1 className="text-xl sm:text-2xl font-semibold text-[#242824] flex items-center gap-2.5">
             <span>
               {isTe
                 ? 'ప్రభుత్వ సంక్షేమ పథకాల జాబితా'
                 : 'Government Welfare Scheme Directory'}
             </span>
-            <span className="bg-emerald-100 text-emerald-900 text-xs font-bold px-2.5 py-0.5 rounded-full">
+            <span className="bg-[#EBF3F0] text-[#075B46] text-xs font-semibold px-2.5 py-0.5 rounded-full">
               {filteredSchemes.length} {isTe ? 'ధృవీకరించబడింది' : 'Verified'}
             </span>
           </h1>
-          <p className="text-xs sm:text-sm text-stone-600 mt-1">
+          <p className="text-xs sm:text-sm text-[#686B66] mt-1 font-normal">
             {isTe
               ? 'ఆంధ్రప్రదేశ్ మరియు కేంద్ర ప్రభుత్వ అధికారిక సంక్షేమ పథకాలు, అర్హత నిబంధనలు మరియు దరఖాస్తు లింకులు'
               : 'Discover verified Central and Andhra Pradesh welfare schemes with authentic eligibility rules, documents, and official portals.'}
@@ -118,18 +118,18 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
 
         {/* Search input in catalog */}
         <div className="relative max-w-md w-full">
-          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none shrink-0" />
+          <Search className="w-4 h-4 text-[#8E918C] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none shrink-0" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isTe ? 'పథకం పేరు, విద్యార్థి, రైతు, పింఛన్...' : 'Search by name, student, farmer, pension...'}
-            className="w-full h-10 pl-9 pr-14 rounded-xl border border-stone-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 shadow-2xs"
+            className="w-full h-10 pl-9 pr-14 rounded-xl border border-[#E5E5DF] bg-white text-xs sm:text-sm text-[#242824] focus:outline-none focus:border-[#075B46] focus:ring-1 focus:ring-[#075B46] shadow-2xs placeholder-[#8E918C]"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 px-1.5 inline-flex items-center justify-center text-xs text-stone-400 hover:text-stone-700 cursor-pointer rounded"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 px-1.5 inline-flex items-center justify-center text-xs text-[#8E918C] hover:text-[#242824] cursor-pointer rounded"
             >
               Clear
             </button>
@@ -140,7 +140,7 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
       {/* Filter Chips Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
         {/* Gov Level buttons */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 bg-[#F8F7F2] p-1 rounded-xl text-xs font-medium border border-[#E5E5DF]">
           {[
             { id: 'all', label: isTe ? 'అన్నీ' : 'All Levels' },
             { id: 'state', label: isTe ? 'ఆంధ్రప్రదేశ్ ప్రభుత్వం' : 'AP State Govt' },
@@ -149,10 +149,10 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
             <button
               key={lvl.id}
               onClick={() => setSelectedGovLevel(lvl.id)}
-              className={`h-8 px-2.5 sm:px-3 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center shrink-0 whitespace-nowrap leading-none ${
+              className={`h-7.5 px-3 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center shrink-0 whitespace-nowrap leading-none ${
                 selectedGovLevel === lvl.id
-                  ? 'bg-emerald-900 text-amber-300 font-bold shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
+                  ? 'bg-white text-[#075B46] font-semibold shadow-xs'
+                  : 'text-[#686B66] hover:text-[#242824]'
               }`}
             >
               {lvl.label}
@@ -162,11 +162,11 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
 
         {/* Category Dropdown */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <Filter className="w-4 h-4 text-stone-500 shrink-0" />
+          <Filter className="w-3.5 h-3.5 text-[#686B66] shrink-0" />
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="h-8 text-xs font-semibold bg-white border border-stone-300 rounded-xl px-2.5 text-stone-700 focus:outline-none cursor-pointer"
+            className="h-8.5 text-xs font-medium bg-white border border-[#E5E5DF] rounded-xl px-2.5 text-[#242824] focus:outline-none focus:border-[#075B46] cursor-pointer shadow-2xs"
           >
             <option value="all">{isTe ? 'అన్ని విభాగాలు' : 'All Categories'}</option>
             <option value="education">{isTe ? 'విద్య & స్కాలర్‌షిప్‌లు' : 'Education & Scholarships'}</option>
@@ -183,14 +183,14 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
 
       {/* Schemes Grid */}
       {filteredSchemes.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-3xl border border-stone-200 p-8 space-y-3">
-          <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto text-stone-400">
-            <Search className="w-6 h-6" />
+        <div className="text-center py-16 bg-white rounded-2xl border border-[#E5E5DF] p-8 space-y-3">
+          <div className="w-12 h-12 rounded-full bg-[#FAF9F5] flex items-center justify-center mx-auto text-[#8E918C]">
+            <Search className="w-5 h-5" />
           </div>
-          <h3 className="font-bold text-stone-800 text-lg">
+          <h3 className="font-semibold text-[#242824] text-base">
             {isTe ? 'పథకాలు కనుగొనబడలేదు' : 'No matching schemes found'}
           </h3>
-          <p className="text-xs text-stone-500 max-w-sm mx-auto">
+          <p className="text-xs text-[#686B66] max-w-sm mx-auto">
             {isTe
               ? 'శోధన పదాన్ని మార్చి లేదా ఫిల్టర్లను రీసెట్ చేసి ప్రయత్నించండి.'
               : 'Try adjusting your search keyword or resetting the government level and category filters.'}
@@ -201,7 +201,7 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
               setSelectedGovLevel('all');
               setSelectedCategory('all');
             }}
-            className="bg-emerald-900 text-amber-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+            className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-4 py-2 rounded-xl text-xs cursor-pointer transition-colors shadow-xs"
           >
             {isTe ? 'అన్ని ఫిల్టర్లు రీసెట్ చేయండి' : 'Reset All Filters'}
           </button>
@@ -213,15 +213,15 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
             return (
               <div
                 key={scheme.id}
-                className="bg-white rounded-2xl border border-stone-200 hover:border-emerald-600/60 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
+                className="bg-white rounded-2xl border border-[#E5E5DF] hover:border-[#075B46] shadow-xs hover:shadow-sm transition-all flex flex-col justify-between overflow-hidden group"
               >
                 {/* Scheme Header banner */}
                 <div className="p-5 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                    <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${
                       scheme.govLevel === 'state'
-                        ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
-                        : 'bg-blue-100 text-blue-900 border border-blue-200'
+                        ? 'bg-[#EBF3F0] text-[#075B46]'
+                        : 'bg-[#F8F7F2] text-[#242824] border border-[#E5E5DF]'
                     }`}>
                       {scheme.govLevel === 'state'
                         ? (isTe ? 'ఆంధ్రప్రదేశ్ ప్రభుత్వం' : 'Govt of Andhra Pradesh')
@@ -241,44 +241,45 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
                       }}
                       className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                         isSaved
-                          ? 'bg-amber-100 border-amber-300 text-amber-700'
-                          : 'bg-stone-50 border-stone-200 text-stone-400 hover:text-stone-700'
+                          ? 'bg-[#FAF4E6] border-[#E6B84A] text-[#242824]'
+                          : 'bg-white border-[#E5E5DF] text-[#8E918C] hover:text-[#242824]'
                       }`}
                       title={isSaved ? 'Remove from saved' : 'Save scheme to bookmarks'}
+                      aria-label={isSaved ? 'Saved' : 'Save'}
                     >
-                      {isSaved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                      {isSaved ? <BookmarkCheck className="w-4 h-4 text-[#075B46]" /> : <Bookmark className="w-4 h-4" />}
                     </button>
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-base text-stone-900 group-hover:text-emerald-900 transition-colors">
+                    <h3 className="font-semibold text-base text-[#242824] group-hover:text-[#075B46] transition-colors">
                       {getSchemeTitle(scheme, currentLanguage)}
                     </h3>
-                    <p className="text-xs text-stone-500 font-medium line-clamp-1 mt-0.5">
+                    <p className="text-xs text-[#686B66] font-normal line-clamp-1 mt-0.5">
                       {getSchemeSubtitle(scheme, currentLanguage)}
                     </p>
                   </div>
 
-                  {/* Benefit highlights pill */}
-                  <div className="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200/80 text-xs text-amber-950">
-                    <div className="font-bold text-amber-900 mb-0.5 flex items-center space-x-1">
-                      <IndianRupee className="w-3.5 h-3.5 text-amber-600" />
+                  {/* Restrained Key Benefit Box */}
+                  <div className="bg-[#FAF9F5] rounded-xl p-3 border border-[#E5E5DF] text-xs text-[#242824]">
+                    <div className="font-semibold text-[#075B46] mb-0.5 flex items-center gap-1">
+                      <IndianRupee className="w-3.5 h-3.5 text-[#075B46]" />
                       <span>{isTe ? 'లభించే ప్రయోజనం:' : 'Key Benefit:'}</span>
                     </div>
-                    <div className="line-clamp-2">
+                    <div className="line-clamp-2 text-[#686B66] leading-relaxed">
                       {getSchemeBenefit(scheme, currentLanguage)}
                     </div>
                   </div>
 
                   {/* Summary */}
-                  <p className="text-xs text-stone-600 line-clamp-2">
+                  <p className="text-xs text-[#686B66] line-clamp-2 leading-relaxed">
                     {getSchemeSummary(scheme, currentLanguage)}
                   </p>
 
                   {/* Department & Verification stamp */}
-                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400">
+                  <div className="pt-2 border-t border-[#F8F7F2] flex items-center justify-between text-[11px] text-[#8E918C]">
                     <span className="truncate max-w-[180px]">{scheme.department}</span>
-                    <span className="text-emerald-700 font-semibold flex items-center space-x-0.5">
+                    <span className="text-[#075B46] font-medium flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3" />
                       <span>Verified</span>
                     </span>
@@ -286,11 +287,11 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
                 </div>
 
                 {/* Footer Buttons */}
-                <div className="bg-stone-50/80 px-5 py-3 border-t border-stone-100 flex items-center justify-between gap-2">
-                  <div className="flex items-center space-x-2">
+                <div className="bg-[#FAF9F5] px-5 py-3 border-t border-[#E5E5DF] flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => onSelectScheme(scheme)}
-                      className="text-xs font-bold text-stone-700 hover:text-emerald-900 underline cursor-pointer"
+                      className="text-xs font-medium text-[#242824] hover:text-[#075B46] hover:underline cursor-pointer"
                     >
                       {t('viewDetails')}
                     </button>
@@ -314,8 +315,8 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
                           title={isPlayingThis ? (isTe ? 'ఆపండి' : 'Stop') : (isTe ? 'పథకం వివరాలు వినండి (Voice Output)' : 'Listen to scheme details (Voice Output)')}
                           className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                             isPlayingThis
-                              ? 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse'
-                              : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                              ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]'
+                              : 'bg-white text-[#686B66] border-[#E5E5DF] hover:text-[#075B46] hover:border-[#C8DDD6]'
                           }`}
                         >
                           {isPlayingThis ? <Square className="w-3.5 h-3.5 fill-current" /> : <Volume2 className="w-3.5 h-3.5" />}
@@ -326,7 +327,7 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
 
                   <button
                     onClick={() => onOpenEligibility(scheme)}
-                    className="bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-xs px-3 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer flex items-center space-x-1"
+                    className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium text-xs px-3.5 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1"
                   >
                     <span>{t('checkEligibility')}</span>
                     <ChevronRight className="w-3.5 h-3.5" />

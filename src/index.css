@@ -1,10 +1,53 @@
 @import "tailwindcss";
 
+@theme {
+  --color-forest: #075B46;
+  --color-forest-hover: #064B3A;
+  --color-forest-dark: #053C2E;
+  --color-forest-light: #EBF3F0;
+  --color-forest-border: #C8DDD6;
+
+  --color-ivory: #F8F7F2;
+  --color-ivory-alt: #F1EFE9;
+
+  --color-gold: #E6B84A;
+  --color-gold-hover: #D9A838;
+  --color-gold-light: #FAF4E6;
+  --color-gold-border: #F0DDAB;
+
+  --color-charcoal: #242824;
+  --color-secondary-text: #686B66;
+  --color-muted-text: #8E918C;
+
+  --color-subtle-border: #E5E5DF;
+  --color-subtle-hover: #ECEBE5;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Telugu", "Helvetica Neue", sans-serif;
+}
+
+:root {
+  --primary-forest: #075B46;
+  --warm-ivory: #F8F7F2;
+  --muted-gold: #E6B84A;
+  --charcoal: #242824;
+  --white-surface: #FFFFFF;
+  --subtle-border: #E5E5DF;
+  --secondary-text: #686B66;
+}
+
 @layer base {
   body {
-    background-color: #fcfbf7;
-    color: #1c1917;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: var(--warm-ivory);
+    color: var(--charcoal);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Telugu", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.011em;
+  }
+
+  ::selection {
+    background-color: #075B46;
+    color: #FFFFFF;
   }
 }
 
@@ -14,9 +57,9 @@ html.simple-mode {
 }
 
 html.simple-mode body {
-  background-color: #ffffff;
-  color: #000000;
-  line-height: 1.6;
+  background-color: #FFFFFF;
+  color: #111827;
+  line-height: 1.65;
 }
 
 html.simple-mode button,
@@ -27,16 +70,32 @@ html.simple-mode select {
   min-height: 3.2rem !important;
 }
 
-/* Subtle animation helpers */
-@keyframes pulseGlow {
+/* Restrained micro-animations */
+@keyframes subtlePulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 0 0 rgba(7, 91, 70, 0.25);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+    box-shadow: 0 0 0 6px rgba(7, 91, 70, 0);
   }
 }
 
 .voice-pulsing {
-  animation: pulseGlow 1.8s infinite;
+  animation: subtlePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom scrollbar for sleek minimal look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8D8D2;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B6B6AF;
 }

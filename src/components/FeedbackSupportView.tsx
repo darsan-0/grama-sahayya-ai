@@ -60,12 +60,12 @@ export const FeedbackSupportView: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm space-y-3">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 flex items-center space-x-2">
-          <HeartHandshake className="w-8 h-8 text-emerald-800" />
+      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-[#E5E5DF] shadow-xs space-y-2">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-charcoal flex items-center space-x-2.5">
+          <HeartHandshake className="w-7 h-7 text-forest" />
           <span>{isTe ? 'పౌరుల సహాయం & సంప్రదింపులు' : 'Citizen Support & Feedback'}</span>
         </h1>
-        <p className="text-xs sm:text-sm text-stone-600">
+        <p className="text-xs sm:text-sm text-secondary-text leading-relaxed">
           {isTe
             ? 'పథకాల సమాచారంపై ఏవైనా సందేహాలు ఉన్నా లేదా సమస్యలు ఉన్నా ఫీడ్‌బ్యాక్ తెలియజేయండి లేదా అధికారిక హెల్ప్‌లైన్‌లకు కాల్ చేయండి.'
             : 'Have an issue with scheme information or need grievance assistance? Share your feedback or call official Andhra Pradesh helplines.'}
@@ -73,53 +73,55 @@ export const FeedbackSupportView: React.FC = () => {
       </div>
 
       {/* Official Helplines Directory Card */}
-      <div className="bg-emerald-900 text-white rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <h2 className="text-lg font-bold text-amber-300">
+      <div className="bg-forest text-white rounded-2xl p-6 sm:p-8 border border-forest/20 shadow-xs space-y-4">
+        <h2 className="text-lg font-semibold text-gold">
           {isTe ? 'అధికారిక ప్రభుత్వ సహాయవాణి నంబర్లు' : 'Official Government Helplines'}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="bg-emerald-950/70 p-4 rounded-2xl border border-emerald-800">
-            <div className="text-amber-400 font-bold text-base">1902</div>
-            <div className="font-semibold text-white mt-1">{isTe ? 'ఆంధ్రప్రదేశ్ స్పందన' : 'Spandana AP Grievance'}</div>
-            <div className="text-[11px] text-emerald-200">Grama Ward Sachivalayam Grievance</div>
+          <div className="bg-white/10 p-4 rounded-xl border border-white/10">
+            <div className="text-gold font-bold text-base">1902</div>
+            <div className="font-medium text-white mt-1">{isTe ? 'ఆంధ్రప్రదేశ్ స్పందన' : 'Spandana AP Grievance'}</div>
+            <div className="text-[11px] text-white/70 mt-0.5">Grama Ward Sachivalayam Grievance</div>
           </div>
-          <div className="bg-emerald-950/70 p-4 rounded-2xl border border-emerald-800">
-            <div className="text-amber-400 font-bold text-base">1947</div>
-            <div className="font-semibold text-white mt-1">{isTe ? 'UIDAI ఆధార్ హెల్ప్‌లైన్' : 'UIDAI Aadhaar National'}</div>
-            <div className="text-[11px] text-emerald-200">National Aadhaar Grievance Desk</div>
+          <div className="bg-white/10 p-4 rounded-xl border border-white/10">
+            <div className="text-gold font-bold text-base">1947</div>
+            <div className="font-medium text-white mt-1">{isTe ? 'UIDAI ఆధార్ హెల్ప్‌లైన్' : 'UIDAI Aadhaar National'}</div>
+            <div className="text-[11px] text-white/70 mt-0.5">National Aadhaar Grievance Desk</div>
           </div>
-          <div className="bg-emerald-950/70 p-4 rounded-2xl border border-emerald-800">
-            <div className="text-amber-400 font-bold text-base">104</div>
-            <div className="font-semibold text-white mt-1">{isTe ? 'డా. వైఎస్సార్ ఆరోగ్యశ్రీ' : 'Dr. YSR Aarogyasri Trust'}</div>
-            <div className="text-[11px] text-emerald-200">Free Medical Treatment Helpline</div>
+          <div className="bg-white/10 p-4 rounded-xl border border-white/10">
+            <div className="text-gold font-bold text-base">104</div>
+            <div className="font-medium text-white mt-1">{isTe ? 'డా. వైఎస్సార్ ఆరోగ్యశ్రీ' : 'Dr. YSR Aarogyasri Trust'}</div>
+            <div className="text-[11px] text-white/70 mt-0.5">Free Medical Treatment Helpline</div>
           </div>
-          <div className="bg-emerald-950/70 p-4 rounded-2xl border border-emerald-800">
-            <div className="text-amber-400 font-bold text-base">155261</div>
-            <div className="font-semibold text-white mt-1">{isTe ? 'పీఎం కిసాన్ హెల్ప్‌లైన్' : 'PM-KISAN Helpline'}</div>
-            <div className="text-[11px] text-emerald-200">PM-KISAN National Farmer Helpdesk</div>
+          <div className="bg-white/10 p-4 rounded-xl border border-white/10">
+            <div className="text-gold font-bold text-base">155261</div>
+            <div className="font-medium text-white mt-1">{isTe ? 'పీఎం కిసాన్ హెల్ప్‌లైన్' : 'PM-KISAN Helpline'}</div>
+            <div className="text-[11px] text-white/70 mt-0.5">PM-KISAN National Farmer Helpdesk</div>
           </div>
         </div>
       </div>
 
       {/* Citizen Feedback Form */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm space-y-4">
-        <h2 className="text-lg font-bold text-stone-900">
-          {isTe ? 'మీ అభిప్రాయాన్ని తెలియజేయండి' : 'Submit Citizen Feedback'}
-        </h2>
-        <p className="text-xs text-stone-500">
-          Help us improve Grama Sahayya AI for rural communities and Telugu-speaking citizens across Andhra Pradesh.
-        </p>
+      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-[#E5E5DF] shadow-xs space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-charcoal">
+            {isTe ? 'మీ అభిప్రాయాన్ని తెలియజేయండి' : 'Submit Citizen Feedback'}
+          </h2>
+          <p className="text-xs text-secondary-text mt-1">
+            Help us improve Grama Sahayya AI for rural communities and Telugu-speaking citizens across Andhra Pradesh.
+          </p>
+        </div>
 
         {submitted ? (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center space-y-2">
-            <CheckCircle2 className="w-8 h-8 text-emerald-700 mx-auto" />
-            <h3 className="font-bold text-emerald-900">ధన్యవాదాలు! మీ అభిప్రాయం నమోదు చేయబడింది.</h3>
-            <p className="text-xs text-stone-600">
+          <div className="bg-[#EBF3F0] border border-forest/20 rounded-xl p-6 text-center space-y-2">
+            <CheckCircle2 className="w-8 h-8 text-forest mx-auto" />
+            <h3 className="font-semibold text-forest">ధన్యవాదాలు! మీ అభిప్రాయం నమోదు చేయబడింది.</h3>
+            <p className="text-xs text-secondary-text">
               Thank you for helping us make public services simple and truthful for every citizen.
             </p>
             <button
               onClick={() => setSubmitted(false)}
-              className="text-xs text-emerald-800 underline font-semibold cursor-pointer pt-2"
+              className="text-xs text-forest underline font-medium cursor-pointer pt-2"
             >
               Submit another response
             </button>
@@ -128,27 +130,28 @@ export const FeedbackSupportView: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             {/* Star Rating */}
             <div>
-              <label className="block font-bold text-stone-700 mb-1.5">
+              <label className="block font-medium text-charcoal mb-1.5">
                 మీ అనుభవం ఎలా ఉంది? (Rating)
               </label>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1.5">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
                     type="button"
                     onClick={() => setRating(star)}
-                    className="p-1 cursor-pointer focus:outline-none"
+                    className="p-1 cursor-pointer focus:outline-none transition-transform hover:scale-110"
+                    aria-label={`Rate ${star} star`}
                   >
                     <Star
-                      className={`w-6 h-6 ${
+                      className={`w-5 h-5 ${
                         star <= rating
                           ? 'fill-amber-400 text-amber-500'
-                          : 'text-stone-300'
+                          : 'text-[#E5E5DF]'
                       }`}
                     />
                   </button>
                 ))}
-                <span className="text-xs font-semibold text-stone-500 ml-2">
+                <span className="text-xs font-medium text-secondary-text ml-2">
                   {rating} of 5 Stars
                 </span>
               </div>
@@ -156,11 +159,11 @@ export const FeedbackSupportView: React.FC = () => {
 
             {/* Category */}
             <div>
-              <label className="block font-bold text-stone-700 mb-1">వర్గం (Category)</label>
+              <label className="block font-medium text-charcoal mb-1">వర్గం (Category)</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-stone-300 bg-white"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E5DF] bg-[#F8F7F2]/40 text-charcoal focus:bg-white focus:border-forest focus:outline-none transition-colors"
               >
                 <option value="General Feedback">సాధారణ అభిప్రాయం (General Feedback)</option>
                 <option value="Scheme Information Correction">పథకం వివరాల్లో సవరణ (Scheme Correction)</option>
@@ -171,7 +174,7 @@ export const FeedbackSupportView: React.FC = () => {
 
             {/* Feedback Message */}
             <div>
-              <label className="block font-bold text-stone-700 mb-1">
+              <label className="block font-medium text-charcoal mb-1">
                 మీ సందేశం లేదా సలహా (Message / Suggestion)
               </label>
               <textarea
@@ -179,7 +182,7 @@ export const FeedbackSupportView: React.FC = () => {
                 onChange={(e) => setMessage(e.target.value)}
                 rows={4}
                 placeholder="Share your experience or tell us how we can make government schemes simpler..."
-                className="w-full p-3 rounded-xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                className="w-full p-3.5 rounded-lg border border-[#E5E5DF] bg-[#F8F7F2]/40 text-charcoal placeholder:text-secondary-text text-sm focus:bg-white focus:border-forest focus:outline-none transition-colors"
                 required
               />
             </div>
@@ -187,7 +190,7 @@ export const FeedbackSupportView: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold px-6 py-2.5 rounded-xl text-xs sm:text-sm shadow-md transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+              className="bg-forest hover:bg-forest/90 text-white font-medium px-6 py-2.5 rounded-full text-xs sm:text-sm shadow-2xs transition-colors flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
               <span>{submitting ? 'Submitting...' : 'సమర్పించండి (Submit Feedback)'}</span>

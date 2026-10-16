@@ -96,7 +96,7 @@ function MainAppContent() {
   }, [currentUser, userProfile]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#fcfbf7] text-stone-900 selection:bg-amber-400 selection:text-emerald-950">
+    <div className="min-h-screen flex flex-col bg-[#F8F7F2] text-[#242824] selection:bg-[#075B46] selection:text-white">
       {/* Top Navigation */}
       <Navbar
         currentTab={currentTab}
@@ -184,19 +184,19 @@ function MainAppContent() {
           isAdmin ? (
             <AdminDashboard />
           ) : (
-            <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl border border-stone-200 text-center space-y-4 shadow-xl">
-              <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-700 mx-auto flex items-center justify-center font-bold border border-rose-200">
-                <Lock className="w-8 h-8" />
+            <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-2xl border border-[#E5E5DF] text-center space-y-4 shadow-xs">
+              <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] text-[#991B1B] mx-auto flex items-center justify-center font-bold border border-[#FCA5A5]">
+                <Lock className="w-6 h-6" />
               </div>
-              <h2 className="text-xl font-extrabold text-stone-900">
+              <h2 className="text-lg font-semibold text-[#242824]">
                 Unauthorized Administrative Access
               </h2>
-              <p className="text-xs text-stone-600 leading-relaxed">
+              <p className="text-xs text-[#686B66] leading-relaxed">
                 This area is restricted to authorized Grama Sahayya administrative staff (Super Admin, Scheme Reviewer, Support Staff, Analytics Viewer). Please sign in with an authorized account.
               </p>
               <button
                 onClick={() => setAuthModalOpen(true)}
-                className="bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold px-5 py-2.5 rounded-xl text-xs shadow-md cursor-pointer"
+                className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-5 py-2.5 rounded-xl text-xs shadow-xs cursor-pointer transition-colors"
               >
                 Sign In with Authorized Admin Account
               </button>
@@ -236,84 +236,84 @@ function MainAppContent() {
         onPrepareApplication={handlePrepareApplication}
       />
 
-      {/* Citizen Trust & Transparent Multilingual Dynamic Footer */}
-      <footer className="bg-emerald-950 text-emerald-100 border-t border-emerald-900 mt-16 pt-12 pb-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto space-y-10">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      {/* Polished, Minimalist Footer */}
+      <footer className="bg-[#053C2E] text-[#D4E2DC] border-t border-[#0E4D3D] mt-20 pt-14 pb-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto space-y-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
             {/* Column 1: Brand & Mission */}
             <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500 text-emerald-950 font-bold flex items-center justify-center text-sm shadow-md">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#075B46] text-white font-semibold flex items-center justify-center text-xs border border-[#16604D]">
                   GS
                 </div>
-                <span className="font-bold text-lg text-white">Grama Sahayya AI</span>
+                <span className="font-semibold text-base text-white">Grama Sahayya AI</span>
               </div>
-              <p className="text-xs text-emerald-300 leading-relaxed">
+              <p className="text-xs text-[#A3BDB3] leading-relaxed">
                 {t('footerTagline')}
               </p>
-              <div className="text-[11px] text-amber-300 font-semibold flex items-center space-x-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="text-xs text-[#E6B84A] font-medium flex items-center gap-1.5 pt-1">
+                <ShieldCheck className="w-4 h-4 text-[#E6B84A] shrink-0" />
                 <span>{t('footerZeroMiddleman')}</span>
               </div>
             </div>
 
             {/* Column 2: Quick Links */}
-            <div className="space-y-2 text-xs">
-              <div className="font-bold text-white uppercase tracking-wider mb-2">
+            <div className="space-y-2.5 text-xs">
+              <div className="font-semibold text-white tracking-wide uppercase text-[11px] mb-3">
                 {t('footerQuickLinksTitle')}
               </div>
               <div>
-                <button onClick={() => setCurrentTab('schemes')} className="hover:text-amber-300 cursor-pointer">
+                <button onClick={() => setCurrentTab('schemes')} className="text-[#A3BDB3] hover:text-white transition-colors cursor-pointer">
                   {t('footerAllSchemes')}
                 </button>
               </div>
               <div>
-                <button onClick={() => setCurrentTab('services')} className="hover:text-amber-300 cursor-pointer">
+                <button onClick={() => setCurrentTab('services')} className="text-[#A3BDB3] hover:text-white transition-colors cursor-pointer">
                   {t('footerPublicServices')}
                 </button>
               </div>
               <div>
-                <button onClick={() => handleOpenEligibility()} className="hover:text-amber-300 cursor-pointer">
+                <button onClick={() => handleOpenEligibility()} className="text-[#A3BDB3] hover:text-white transition-colors cursor-pointer">
                   {t('footerEligibilityEngine')}
                 </button>
               </div>
               <div>
-                <button onClick={() => setCurrentTab('chat')} className="hover:text-amber-300 cursor-pointer">
+                <button onClick={() => setCurrentTab('chat')} className="text-[#A3BDB3] hover:text-white transition-colors cursor-pointer">
                   {t('footerAskAi')}
                 </button>
               </div>
               <div>
-                <button onClick={() => setCurrentTab('tracker')} className="hover:text-amber-300 cursor-pointer">
+                <button onClick={() => setCurrentTab('tracker')} className="text-[#A3BDB3] hover:text-white transition-colors cursor-pointer">
                   {t('footerApplicationTracker')}
                 </button>
               </div>
             </div>
 
             {/* Column 3: Helplines */}
-            <div className="space-y-2 text-xs">
-              <div className="font-bold text-white uppercase tracking-wider mb-2">
+            <div className="space-y-2.5 text-xs">
+              <div className="font-semibold text-white tracking-wide uppercase text-[11px] mb-3">
                 {t('footerHelplinesTitle')}
               </div>
-              <div className="flex items-center space-x-2 text-emerald-200">
-                <PhoneCall className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>{t('footerSpandana')}: <strong>1902</strong></span>
+              <div className="flex items-center gap-2 text-[#D4E2DC]">
+                <PhoneCall className="w-3.5 h-3.5 text-[#E6B84A] shrink-0" />
+                <span>{t('footerSpandana')}: <strong className="text-white">1902</strong></span>
               </div>
-              <div className="flex items-center space-x-2 text-emerald-200">
-                <PhoneCall className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>{t('footerAadhaar')}: <strong>1947</strong></span>
+              <div className="flex items-center gap-2 text-[#D4E2DC]">
+                <PhoneCall className="w-3.5 h-3.5 text-[#E6B84A] shrink-0" />
+                <span>{t('footerAadhaar')}: <strong className="text-white">1947</strong></span>
               </div>
-              <div className="flex items-center space-x-2 text-emerald-200">
-                <PhoneCall className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>{t('footerAarogyasri')}: <strong>104</strong></span>
+              <div className="flex items-center gap-2 text-[#D4E2DC]">
+                <PhoneCall className="w-3.5 h-3.5 text-[#E6B84A] shrink-0" />
+                <span>{t('footerAarogyasri')}: <strong className="text-white">104</strong></span>
               </div>
-              <div className="flex items-center space-x-2 text-emerald-200">
-                <PhoneCall className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>{t('footerPmKisan')}: <strong>155261</strong></span>
+              <div className="flex items-center gap-2 text-[#D4E2DC]">
+                <PhoneCall className="w-3.5 h-3.5 text-[#E6B84A] shrink-0" />
+                <span>{t('footerPmKisan')}: <strong className="text-white">155261</strong></span>
               </div>
-              <div className="pt-2">
+              <div className="pt-1">
                 <button
                   onClick={() => setCurrentTab('feedback')}
-                  className="text-amber-300 hover:underline font-semibold cursor-pointer"
+                  className="text-[#E6B84A] hover:underline font-medium cursor-pointer"
                 >
                   {t('footerMoreNumbers')}
                 </button>
@@ -321,24 +321,24 @@ function MainAppContent() {
             </div>
 
             {/* Column 4: Integrity & Disclaimers */}
-            <div className="space-y-2 text-xs">
-              <div className="font-bold text-white uppercase tracking-wider mb-2">
+            <div className="space-y-2.5 text-xs">
+              <div className="font-semibold text-white tracking-wide uppercase text-[11px] mb-3">
                 {t('footerIntegrityTitle')}
               </div>
-              <p className="text-[11px] text-emerald-300/80 leading-relaxed">
+              <p className="text-[11px] text-[#A3BDB3] leading-relaxed">
                 {t('footerDisclaimer')}
               </p>
               <div className="pt-2 flex flex-wrap gap-2 text-[11px]">
                 <button
                   onClick={() => setCurrentTab('profile')}
-                  className="text-emerald-300 hover:text-white underline cursor-pointer"
+                  className="text-[#D4E2DC] hover:text-white underline cursor-pointer"
                 >
                   {t('footerPrivacyRights')}
                 </button>
-                <span>•</span>
+                <span className="text-[#0E4D3D]">•</span>
                 <button
                   onClick={() => setCurrentTab('feedback')}
-                  className="text-emerald-300 hover:text-white underline cursor-pointer"
+                  className="text-[#D4E2DC] hover:text-white underline cursor-pointer"
                 >
                   {t('footerReportGrievance')}
                 </button>
@@ -346,11 +346,12 @@ function MainAppContent() {
             </div>
           </div>
 
-          <div className="border-t border-emerald-900/80 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-emerald-400/80 gap-3">
+          <div className="border-t border-[#0E4D3D] pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#A3BDB3] gap-3">
             <div>
               {t('footerCopyrightText')}
             </div>
-            <div className="flex items-center space-x-3 text-[11px]">
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E6B84A]" />
               <span>{t('footerTestedBadge')}</span>
             </div>
           </div>

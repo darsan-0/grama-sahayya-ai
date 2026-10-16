@@ -269,11 +269,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-stone-200 relative animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-xl border border-[#E5E5DF] relative animate-in fade-in zoom-in-95 duration-200">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-1.5 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 cursor-pointer"
+          className="absolute top-4 right-4 p-2 text-secondary-text hover:text-charcoal rounded-full hover:bg-[#F8F7F2] transition-colors cursor-pointer"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -281,24 +281,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
         {/* Brand header */}
         <div className="text-center space-y-2 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-800 to-teal-700 text-amber-300 font-bold text-xl flex items-center justify-center mx-auto shadow-md">
+          <div className="w-12 h-12 rounded-xl bg-forest text-gold font-bold text-lg flex items-center justify-center mx-auto shadow-2xs">
             GS
           </div>
-          <h2 className="text-xl font-bold text-stone-900">
+          <h2 className="text-xl font-semibold tracking-tight text-charcoal">
             పౌరుల లాగిన్ / Sign In to Grama Sahayya
           </h2>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-secondary-text">
             Official government scheme guidance, eligibility evaluation, and application tracking.
           </p>
         </div>
 
         {/* Tab switcher: Google vs Phone */}
-        <div className="grid grid-cols-2 gap-2 bg-stone-100 p-1 rounded-xl mb-5 text-xs font-semibold">
+        <div className="grid grid-cols-2 gap-1 bg-[#F8F7F2] p-1 rounded-xl mb-5 text-xs font-medium border border-[#E5E5DF]">
           <button
             type="button"
             onClick={() => handleTabSwitch('google')}
             className={`py-2 rounded-lg transition-all cursor-pointer ${
-              authMode === 'google' ? 'bg-white text-emerald-950 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              authMode === 'google' ? 'bg-white text-charcoal shadow-2xs font-semibold' : 'text-secondary-text hover:text-charcoal'
             }`}
           >
             Google Sign-In (సిఫార్సు)
@@ -307,7 +307,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             type="button"
             onClick={() => handleTabSwitch('phone')}
             className={`py-2 rounded-lg transition-all cursor-pointer ${
-              authMode === 'phone' ? 'bg-white text-emerald-950 shadow-xs font-bold' : 'text-stone-600 hover:text-stone-900'
+              authMode === 'phone' ? 'bg-white text-charcoal shadow-2xs font-semibold' : 'text-secondary-text hover:text-charcoal'
             }`}
           >
             Phone OTP (+91)
@@ -316,7 +316,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
         {/* Dynamic Contextual Feedback Banners */}
         {errorMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-2">
+          <div className="mb-4 p-3 rounded-xl bg-[#FFF5F5] border border-rose-200 text-rose-800 text-xs space-y-2">
             <div className="flex items-start space-x-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
               <span className="leading-relaxed">{errorMessage}</span>
@@ -325,7 +325,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <button
                 type="button"
                 onClick={() => handleTabSwitch('google')}
-                className="w-full mt-1 bg-white hover:bg-stone-50 text-emerald-950 font-bold py-1.5 px-3 rounded-lg border border-stone-300 text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-2xs"
+                className="w-full mt-1 bg-white hover:bg-[#F8F7F2] text-forest font-medium py-1.5 px-3 rounded-lg border border-[#E5E5DF] text-xs flex items-center justify-center space-x-2 transition-colors cursor-pointer shadow-2xs"
               >
                 <span>👉 Continue with Google Sign-In instead (Google ఖాతాతో లాగిన్ అవ్వండి)</span>
               </button>
@@ -334,8 +334,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         )}
 
         {successMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+          <div className="mb-4 p-3 rounded-xl bg-[#EBF3F0] border border-forest/20 text-forest text-xs flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-forest" />
             <span className="font-medium">{successMessage}</span>
           </div>
         )}
@@ -347,7 +347,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full bg-white hover:bg-stone-50 text-stone-700 font-bold py-3 px-4 rounded-xl border border-stone-300 shadow-xs flex items-center justify-center space-x-3 transition-colors cursor-pointer disabled:opacity-50"
+              className="w-full bg-white hover:bg-[#F8F7F2] text-charcoal font-medium py-3 px-4 rounded-xl border border-[#E5E5DF] shadow-2xs flex items-center justify-center space-x-3 transition-colors cursor-pointer disabled:opacity-50"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -370,9 +370,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <span>{loading ? 'Connecting Google Account...' : 'Continue with Google Account'}</span>
             </button>
 
-            <div className="bg-amber-50 rounded-xl p-3 text-xs text-amber-950 border border-amber-200 flex items-start space-x-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-              <span>
+            <div className="bg-[#FAF7EC] rounded-xl p-3 text-xs text-charcoal border border-[#EBE3CD] flex items-start space-x-2">
+              <ShieldCheck className="w-4 h-4 text-forest shrink-0 mt-0.5" />
+              <span className="text-secondary-text leading-relaxed">
                 Real Google OAuth verified via Firebase Authentication. We never access your Google password or private emails.
               </span>
             </div>
@@ -385,11 +385,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             {step === 'enter_phone' ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-medium text-charcoal mb-1">
                     భారతీయ మొబైల్ నంబర్ (Indian Mobile Number)
                   </label>
-                  <div className="flex items-center rounded-xl border border-stone-300 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-700">
-                    <span className="bg-stone-100 px-3.5 py-3 text-sm font-bold text-stone-700 border-r border-stone-300 select-none">
+                  <div className="flex items-center rounded-xl border border-[#E5E5DF] overflow-hidden focus-within:border-forest transition-colors">
+                    <span className="bg-[#F8F7F2] px-3.5 py-3 text-sm font-semibold text-charcoal border-r border-[#E5E5DF] select-none">
                       +91
                     </span>
                     <input
@@ -402,11 +402,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                       placeholder="9876543210"
                       maxLength={10}
                       autoFocus
-                      className="w-full px-3 py-3 text-sm focus:outline-none font-mono"
+                      className="w-full px-3 py-3 text-sm focus:outline-none font-mono text-charcoal"
                       required
                     />
                   </div>
-                  <p className="text-[11px] text-stone-500 mt-1">
+                  <p className="text-[11px] text-secondary-text mt-1">
                     Enter valid 10 digits. Real SMS OTP will be delivered via Firebase.
                   </p>
                 </div>
@@ -414,14 +414,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 <button
                   type="submit"
                   disabled={loading || phoneDigits.length !== 10}
-                  className="w-full bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold py-3 px-4 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
+                  className="w-full bg-forest hover:bg-forest/90 text-white font-medium py-3 px-4 rounded-xl shadow-2xs transition-colors cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
                 >
                   <Phone className="w-4 h-4" />
                   <span>{loading ? 'Sending SMS OTP...' : 'Send SMS OTP (ఓటీపీ పంపండి)'}</span>
                 </button>
 
-                <div className="bg-stone-50 rounded-xl p-2.5 text-[11px] text-stone-600 border border-stone-200 flex items-start space-x-2">
-                  <Info className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
+                <div className="bg-[#F8F7F2] rounded-xl p-3 text-[11px] text-secondary-text border border-[#E5E5DF] flex items-start space-x-2">
+                  <Info className="w-3.5 h-3.5 text-secondary-text shrink-0 mt-0.5" />
                   <span>
                     Google Sign-In is active and requires zero SMS setup. You can also sign in instantly using the Google tab above.
                   </span>
@@ -430,7 +430,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-medium text-charcoal mb-1">
                     SMS లో వచ్చిన 6 అంకెల ఓటీపీ నమోదు చేయండి
                   </label>
                   <div className="relative">
@@ -444,14 +444,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                       placeholder="123456"
                       maxLength={6}
                       autoFocus
-                      className="w-full px-3 py-3 text-center text-2xl font-bold tracking-widest rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-emerald-700 font-mono"
+                      className="w-full px-3 py-3 text-center text-2xl font-bold tracking-widest rounded-xl border border-[#E5E5DF] focus:outline-none focus:border-forest font-mono text-charcoal"
                       required
                     />
-                    <Lock className="w-4 h-4 text-stone-400 absolute right-3 top-4" />
+                    <Lock className="w-4 h-4 text-secondary-text absolute right-3 top-4" />
                   </div>
 
-                  <div className="flex justify-between items-center text-xs mt-2 text-stone-500">
-                    <span>Sent to: <strong>+91 {phoneDigits}</strong></span>
+                  <div className="flex justify-between items-center text-xs mt-2 text-secondary-text">
+                    <span>Sent to: <strong className="text-charcoal">+91 {phoneDigits}</strong></span>
                     <button
                       type="button"
                       onClick={() => {
@@ -460,7 +460,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                         setErrorMessage(null);
                         setSuccessMessage(null);
                       }}
-                      className="text-emerald-800 font-semibold underline cursor-pointer hover:text-emerald-900"
+                      className="text-forest font-medium underline cursor-pointer hover:text-forest/80"
                     >
                       Change Number
                     </button>
@@ -470,7 +470,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 <button
                   type="submit"
                   disabled={loading || otpCode.length !== 6}
-                  className="w-full bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold py-3 px-4 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
+                  className="w-full bg-forest hover:bg-forest/90 text-white font-medium py-3 px-4 rounded-xl shadow-2xs transition-colors cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{loading ? 'Verifying OTP...' : 'Verify OTP & Sign In'}</span>
@@ -479,15 +479,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 {/* Resend Countdown & Retry Controls */}
                 <div className="pt-2 text-center text-xs">
                   {countdown > 0 ? (
-                    <span className="text-stone-500">
-                      Resend OTP in <strong className="text-emerald-900 font-mono">{countdown}s</strong>
+                    <span className="text-secondary-text">
+                      Resend OTP in <strong className="text-charcoal font-mono">{countdown}s</strong>
                     </span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => handleSendOtp()}
                       disabled={loading}
-                      className="text-emerald-800 font-bold hover:underline inline-flex items-center space-x-1 cursor-pointer"
+                      className="text-forest font-medium hover:underline inline-flex items-center space-x-1 cursor-pointer"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       <span>Resend SMS OTP (ఓటీపీ మళ్ళీ పంపండి)</span>
@@ -507,11 +507,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         ></div>
 
         {/* Honest Privacy & Method Distinction Notice */}
-        <div className="mt-5 pt-3 border-t border-stone-100 text-center text-[11px] text-stone-500 space-y-1">
+        <div className="mt-5 pt-3 border-t border-[#E5E5DF] text-center text-[11px] text-secondary-text space-y-1">
           <p>
             Google Sign-In and Phone OTP are separate methods. Browsing public schemes is always free and does not require sign-in.
           </p>
-          <div className="flex items-center justify-center space-x-1 text-emerald-800 font-semibold">
+          <div className="flex items-center justify-center space-x-1 text-forest font-medium">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Zero middleman fees • No Aadhaar OTP or bank PIN collected</span>
           </div>
