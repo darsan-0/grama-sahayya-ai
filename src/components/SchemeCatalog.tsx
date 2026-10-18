@@ -21,6 +21,12 @@ import {
 } from 'lucide-react';
 import { Scheme, SchemeCategory, GovLevel } from '../types';
 import { VERIFIED_SCHEMES } from '../data/schemes';
+import {
+  filterPublicSchemes,
+  isYsrBrandedScheme,
+  containsYsrBranding,
+  normalizeSchemeText
+} from '../utils/schemeNormalization';
 import { useLanguage } from '../context/LanguageContext';
 import {
   getSchemeTitle,
@@ -69,8 +75,18 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
 
   const isTe = currentLanguage === 'te';
 
+  const isYsrSearch = useMemo(() => containsYsrBranding(search), [search]);
+
   const filteredSchemes = useMemo(() => {
-    return VERIFIED_SCHEMES.filter((scheme) => {
+    // Strictly filter out any YSR-branded or unverified entries
+    const publicCatalog = filterPublicSchemes(VERIFIED_SCHEMES);
+
+    // If query contains explicit YSR branding, public results must be empty
+    if (isYsrSearch) {
+      return [];
+    }
+
+    return publicCatalog.filter((scheme) => {
       // Gov level filter
       if (selectedGovLevel !== 'all' && scheme.govLevel !== selectedGovLevel) {
         return false;
@@ -81,18 +97,29 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
       }
       // Text search
       if (search.trim()) {
-        const q = search.toLowerCase();
-        const matchesName = scheme.officialName.toLowerCase().includes(q) || scheme.teName.toLowerCase().includes(q);
-        const matchesSummary = scheme.summary.toLowerCase().includes(q) || scheme.teSummary.toLowerCase().includes(q);
-        const matchesCategory = scheme.category.toLowerCase().includes(q);
-        const matchesDept = scheme.department.toLowerCase().includes(q);
-        if (!matchesName && !matchesSummary && !matchesCategory && !matchesDept) {
+        const q = normalizeSchemeText(search);
+        const nameNorm = normalizeSchemeText(scheme.officialName);
+        const teNameNorm = normalizeSchemeText(scheme.teName);
+        const sumNorm = normalizeSchemeText(scheme.summary);
+        const teSumNorm = normalizeSchemeText(scheme.teSummary);
+        const catNorm = normalizeSchemeText(scheme.category);
+        const deptNorm = normalizeSchemeText(scheme.department);
+
+        const matches =
+          nameNorm.includes(q) ||
+          teNameNorm.includes(q) ||
+          sumNorm.includes(q) ||
+          teSumNorm.includes(q) ||
+          catNorm.includes(q) ||
+          deptNorm.includes(q);
+
+        if (!matches) {
           return false;
         }
       }
       return true;
     });
-  }, [search, selectedGovLevel, selectedCategory]);
+  }, [search, selectedGovLevel, selectedCategory, isYsrSearch]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -174,38 +201,80 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
             <option value="women_shg">{isTe ? 'మహిళలు & డ్వాక్రా' : 'Women & SHGs'}</option>
             <option value="pensions">{isTe ? 'వృద్ధాప్య & వితంతు పింఛన్లు' : 'Social Security Pensions'}</option>
             <option value="housing">{isTe ? 'గృహ నిర్మాణం & సోలార్' : 'Housing & Solar Energy'}</option>
-            <option value="health">{isTe ? 'ఉచిత వైద్యం (ఆరోగ్యశ్రీ)' : 'Healthcare & Aarogyasri'}</option>
+            <option value="health">{isTe ? 'ఉచిత వైద్యం (NTR వైద్య సేవ)' : 'Healthcare & NTR Vaidya Seva'}</option>
             <option value="msme_entrepreneurship">{isTe ? 'చిరు వ్యాపారాలు & ఉపాధి' : 'MSME & Entrepreneurship'}</option>
-            <option value="employment">{isTe ? 'గ్రామీణ ఉపాధి హామీ' : 'Rural Employment (MGNREGS)'}</option>
+            <option value="employment">{isTe ? 'గ్రామీణ ఉపాధి హామీ & యువగళం' : 'Rural Employment & Youth Skilling'}</option>
           </select>
         </div>
       </div>
 
       {/* Schemes Grid */}
       {filteredSchemes.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-[#E5E5DF] p-8 space-y-3">
-          <div className="w-12 h-12 rounded-full bg-[#FAF9F5] flex items-center justify-center mx-auto text-[#8E918C]">
-            <Search className="w-5 h-5" />
+        isYsrSearch ? (
+          <div className="text-center py-12 bg-white rounded-2xl border border-[#E5E5DF] p-8 space-y-4 max-w-2xl mx-auto shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-[#EBF3F0] text-[#075B46] flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <h3 className="font-semibold text-[#242824] text-base">
+              {isTe ? 'వైఎస్సార్ పథకాలు పబ్లిక్ కేటలాగ్ నుండి తొలగించబడ్డాయి' : 'YSR-Branded Schemes Excluded from Public Directory'}
+            </h3>
+            <p className="text-xs text-[#686B66] leading-relaxed">
+              {isTe
+                ? 'గమనిక: వైఎస్సార్ బ్రాండెడ్ పథకాలు ప్రజా కేటలాగ్ నుండి తొలగించబడ్డాయి మరియు ఆర్కైవ్ చేయబడ్డాయి. దయచేసి ప్రస్తుత ఆంధ్రప్రదేశ్ ప్రభుత్వ అధికారిక పథకాలైన అన్నదాత సుఖీభవ, ఎన్టీఆర్ భరోసా పింఛన్లు, డా. ఎన్టీఆర్ వైద్య సేవ, తల్లికి వందనం, ఆడబిడ్డ నిధి, మరియు స్త్రీ శక్తి పథకాలను పరిశీలించండి.'
+                : 'Notice: YSR-branded schemes have been excluded from the public directory and safely archived. Please explore currently verified Andhra Pradesh initiatives including Annadata Sukhibhava, NTR Bharosa Pension, Dr. NTR Vaidya Seva, Talliki Vandanam, Aadabidda Nidhi, and Sthree Shakthi.'}
+            </p>
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+              <button
+                onClick={() => setSearch('అన్నదాత సుఖీభవ')}
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#F8F7F2] hover:bg-[#EBF3F0] text-[#075B46] font-medium border border-[#E5E5DF] cursor-pointer"
+              >
+                {isTe ? 'అన్నదాత సుఖీభవ' : 'Annadata Sukhibhava'}
+              </button>
+              <button
+                onClick={() => setSearch('NTR Bharosa')}
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#F8F7F2] hover:bg-[#EBF3F0] text-[#075B46] font-medium border border-[#E5E5DF] cursor-pointer"
+              >
+                {isTe ? 'ఎన్టీఆర్ భరోసా' : 'NTR Bharosa'}
+              </button>
+              <button
+                onClick={() => setSearch('NTR Vaidya Seva')}
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#F8F7F2] hover:bg-[#EBF3F0] text-[#075B46] font-medium border border-[#E5E5DF] cursor-pointer"
+              >
+                {isTe ? 'ఎన్టీఆర్ వైద్య సేవ' : 'NTR Vaidya Seva'}
+              </button>
+              <button
+                onClick={() => setSearch('Talliki Vandanam')}
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#F8F7F2] hover:bg-[#EBF3F0] text-[#075B46] font-medium border border-[#E5E5DF] cursor-pointer"
+              >
+                {isTe ? 'తల్లికి వందనం' : 'Talliki Vandanam'}
+              </button>
+            </div>
           </div>
-          <h3 className="font-semibold text-[#242824] text-base">
-            {isTe ? 'పథకాలు కనుగొనబడలేదు' : 'No matching schemes found'}
-          </h3>
-          <p className="text-xs text-[#686B66] max-w-sm mx-auto">
-            {isTe
-              ? 'శోధన పదాన్ని మార్చి లేదా ఫిల్టర్లను రీసెట్ చేసి ప్రయత్నించండి.'
-              : 'Try adjusting your search keyword or resetting the government level and category filters.'}
-          </p>
-          <button
-            onClick={() => {
-              setSearch('');
-              setSelectedGovLevel('all');
-              setSelectedCategory('all');
-            }}
-            className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-4 py-2 rounded-xl text-xs cursor-pointer transition-colors shadow-xs"
-          >
-            {isTe ? 'అన్ని ఫిల్టర్లు రీసెట్ చేయండి' : 'Reset All Filters'}
-          </button>
-        </div>
+        ) : (
+          <div className="text-center py-16 bg-white rounded-2xl border border-[#E5E5DF] p-8 space-y-3">
+            <div className="w-12 h-12 rounded-full bg-[#FAF9F5] flex items-center justify-center mx-auto text-[#8E918C]">
+              <Search className="w-5 h-5" />
+            </div>
+            <h3 className="font-semibold text-[#242824] text-base">
+              {isTe ? 'పథకాలు కనుగొనబడలేదు' : 'No matching schemes found'}
+            </h3>
+            <p className="text-xs text-[#686B66] max-w-sm mx-auto">
+              {isTe
+                ? 'శోధన పదాన్ని మార్చి లేదా ఫిల్టర్లను రీసెట్ చేసి ప్రయత్నించండి.'
+                : 'Try adjusting your search keyword or resetting the government level and category filters.'}
+            </p>
+            <button
+              onClick={() => {
+                setSearch('');
+                setSelectedGovLevel('all');
+                setSelectedCategory('all');
+              }}
+              className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-4 py-2 rounded-xl text-xs cursor-pointer transition-colors shadow-xs"
+            >
+              {isTe ? 'అన్ని ఫిల్టర్లు రీసెట్ చేయండి' : 'Reset All Filters'}
+            </button>
+          </div>
+        )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredSchemes.map((scheme) => {

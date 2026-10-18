@@ -7,3 +7,15 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Android Keystores, signing secrets and builds
+*.keystore
+*.jks
+keystore.properties
+local.properties
+android/keystore/
+android/.gradle/
+android/build/
+android/app/build/
+android-twa/build/
+android-twa/.gradle/

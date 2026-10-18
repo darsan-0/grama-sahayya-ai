@@ -18,12 +18,89 @@ export type SchemeCategory =
 
 export type VerificationStatus = 'verified' | 'pending_review' | 'stale';
 
+export type SchemeLifecycleStatus =
+  | 'ACTIVE'
+  | 'UPDATED'
+  | 'REPLACED_OR_MERGED'
+  | 'DISCONTINUED'
+  | 'APPLICATION_CLOSED'
+  | 'LINK_UNAVAILABLE'
+  | 'UNVERIFIED';
+
+export type ApplicationWindowStatus = 'open' | 'closed' | 'scheduled' | 'unknown';
+
+export type VerificationSourceType =
+  | 'ap_gov_portal'
+  | 'central_ministry'
+  | 'myscheme_gov_in'
+  | 'india_gov_in'
+  | 'gazette_circular';
+
+export interface LinkValidationRecord {
+  url: string;
+  isOfficialGovDomain: boolean;
+  httpStatus?: number;
+  status: 'valid' | 'redirected' | 'unreachable' | 'inconclusive' | 'blocked_by_policy';
+  finalUrl?: string;
+  lastCheckedAt: string;
+  notes?: string;
+}
+
+export type LinkAuditStatus =
+  | 'VERIFIED_WORKING'
+  | 'VERIFIED_WORKING_WITH_REDIRECT'
+  | 'INFORMATION_PAGE_ONLY'
+  | 'LOGIN_OR_AUTHENTICATION_REQUIRED'
+  | 'MANUAL_VERIFICATION_REQUIRED'
+  | 'TEMPORARILY_UNAVAILABLE'
+  | 'BROKEN_LINK'
+  | 'REPLACEMENT_FOUND'
+  | 'APPLICATION_CLOSED'
+  | 'DISCONTINUED_OR_REPLACED'
+  | 'UNVERIFIED';
+
+export interface GovernmentLinkAuditItem {
+  id: string; // Record ID (e.g. 'talliki-vandanam-ap' or 'aadhaar-services')
+  name: string;
+  teName: string;
+  itemType: 'scheme' | 'public_service' | 'archived_historical';
+  govLevel: 'state' | 'central';
+  department: string;
+  category: string;
+  previousInfoUrl?: string;
+  correctedInfoUrl: string;
+  previousAppUrl?: string;
+  correctedAppUrl: string;
+  primaryActionType: 'apply_online' | 'info_guidelines_only' | 'walk_in_or_offline' | 'application_window_upcoming';
+  infoLinkStatus: LinkAuditStatus;
+  appLinkStatus: LinkAuditStatus;
+  overallStatus: LinkAuditStatus;
+  statusExplanation: string;
+  teStatusExplanation: string;
+  verificationSource: string;
+  verificationMethod: 'automated_http' | 'browser_navigation' | 'official_gazette_circular' | 'search_web_grounding';
+  verificationTimestamp: string;
+  lastSuccessfulCheck: string;
+  requiresManualVerification: boolean;
+  httpStatusCode?: number;
+  finalRedirectUrl?: string;
+}
+
+export interface SchemeLinkAudit {
+  infoUrlCheck?: LinkValidationRecord;
+  appUrlCheck?: LinkValidationRecord;
+  overallLinkStatus: 'accessible' | 'attention_needed' | 'inconclusive' | 'unverified';
+  lastAuditTimestamp: string;
+}
+
+
 export interface Scheme {
   id: string;
   officialName: string;
   teName: string; // Telugu official title
   hiName?: string; // Hindi title
   department: string;
+  responsibleMinistry?: string;
   govLevel: GovLevel;
   state: string; // 'Andhra Pradesh' or 'All India'
   districts?: string[];
@@ -60,23 +137,68 @@ export interface Scheme {
   sourceUrls: string[];
   lastVerifiedAt: string; // ISO date
   verificationStatus: VerificationStatus;
+  lifecycleStatus: SchemeLifecycleStatus;
+  applicationWindowStatus?: ApplicationWindowStatus;
+  historicalAliases?: string[];
+  predecessorOrMergedWith?: string;
+  successorScheme?: string;
+  verificationSourceType?: VerificationSourceType;
+  linkAudit?: SchemeLinkAudit;
+  discontinuationEvidence?: string;
   published: boolean;
   deadline?: string;
   renewalPeriod?: string;
   verifiedHelpline?: string;
+  actionType?: 'apply_online' | 'info_guidelines_only' | 'walk_in_or_offline' | 'application_window_upcoming';
+  actionNote?: string;
+  teActionNote?: string;
+  linkAuditStatus?: LinkAuditStatus;
 }
+
+
+export type PublicServiceCategory =
+  | 'identity'
+  | 'revenue_certificates'
+  | 'certificates'
+  | 'education'
+  | 'agriculture'
+  | 'healthcare'
+  | 'transport'
+  | 'utilities'
+  | 'grievances'
+  | 'business'
+  | 'welfare_cards'
+  | 'land_records'
+  | 'electoral';
+
+export type PublicServiceStatus =
+  | 'VERIFIED'
+  | 'UPDATED'
+  | 'TEMPORARILY_UNAVAILABLE'
+  | 'APPLICATION_CLOSED'
+  | 'DISCONTINUED'
+  | 'UNVERIFIED';
 
 export interface PublicService {
   id: string;
   name: string;
   teName: string;
-  category: 'identity' | 'revenue_certificates' | 'welfare_cards' | 'electoral' | 'transport' | 'land_records';
+  category: PublicServiceCategory;
+  govLevel: 'state' | 'central';
+  department: string;
+  teDepartment?: string;
   purpose: string;
   tePurpose: string;
-  officialPortal: string;
+  officialInfoUrl: string;
+  officialApplicationUrl: string;
+  officialPortal: string; // backward compatibility
+  status: PublicServiceStatus;
+  lastVerifiedDate: string;
+  verificationSource: string;
   officialFee: string;
   processingTime: string;
   eligibility: string;
+  teEligibility?: string;
   requiredDocuments: string[];
   teRequiredDocuments: string[];
   steps: string[];
@@ -84,7 +206,13 @@ export interface PublicService {
   trackingInstructions: string;
   teTrackingInstructions: string;
   supportHelpline?: string;
+  unavailableReason?: string;
+  actionType?: 'apply_online' | 'info_guidelines_only' | 'walk_in_or_offline' | 'application_window_upcoming';
+  actionNote?: string;
+  teActionNote?: string;
+  linkAuditStatus?: LinkAuditStatus;
 }
+
 
 export type ApplicationStatus =
   | 'interested'
@@ -101,6 +229,7 @@ export type ApplicationStatus =
 
 export interface AssistanceSession {
   id: string;
+  sessionId?: string;
   userId: string;
   schemeId: string;
   schemeName: string;
@@ -111,11 +240,16 @@ export interface AssistanceSession {
   verifiedOutcomeNotes?: string;
   preparedAnswers: Record<string, string>;
   completedDocuments: string[];
+  documentChecks?: Record<string, boolean>;
+  eligibilityResponses?: Record<string, any>;
+  currentStep?: number;
   reportedSubmittedAt?: string;
   verifiedStatusUpdatedAt?: string;
+  savedAtIso?: string;
+  lastUpdatedAtIso?: string;
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | any;
+  updatedAt: string | any;
 }
 
 export interface UserProfile {

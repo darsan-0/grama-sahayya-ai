@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#075B46" />
+      <stop offset="100%" stop-color="#054333" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCE182" />
+      <stop offset="50%" stop-color="#E6B84A" />
+      <stop offset="100%" stop-color="#C29424" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+
+  <!-- Outer Emblem Border -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#gold)" stroke-width="6" opacity="0.4" />
+  <circle cx="256" cy="256" r="176" fill="none" stroke="url(#gold)" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.6" />
+
+  <!-- Central Shield of Governance -->
+  <path d="M256 100 L370 150 V260 C370 335 320 395 256 422 C192 395 142 335 142 260 V150 Z" 
+        fill="#FFFFFF" filter="url(#shadow)" opacity="0.97" />
+
+  <!-- Inner Shield Accent -->
+  <path d="M256 122 L350 164 V254 C350 316 308 368 256 394 C204 368 162 316 162 254 V164 Z" 
+        fill="url(#bg)" />
+
+  <!-- Village Sprout / Rising Sun Graphic -->
+  <g transform="translate(256, 260) scale(1.15)">
+    <!-- Sun Rays -->
+    <path d="M-40 -40 L-25 -25 M0 -55 L0 -35 M40 -40 L25 -25" stroke="url(#gold)" stroke-width="5" stroke-linecap="round" />
+    <!-- Rising Sun Base -->
+    <circle cx="0" cy="-20" r="18" fill="url(#gold)" />
+    
+    <!-- Village Roof / Pagoda / Gopuram Emblem -->
+    <path d="M-50 10 L0 -25 L50 10 L40 10 L0 -15 L-40 10 Z" fill="#FFFFFF" />
+    <rect x="-35" y="10" width="70" height="38" rx="4" fill="url(#gold)" />
+    
+    <!-- Pillar Columns -->
+    <rect x="-26" y="16" width="10" height="32" rx="2" fill="#075B46" />
+    <rect x="-5" y="16" width="10" height="32" rx="2" fill="#075B46" />
+    <rect x="16" y="16" width="10" height="32" rx="2" fill="#075B46" />
+    
+    <!-- Foundation Step -->
+    <rect x="-44" y="48" width="88" height="8" rx="3" fill="#FFFFFF" />
+  </g>
+
+  <!-- Telugu Leaf / Citizen Service Touchpoint -->
+  <path d="M256 335 C275 350 295 355 315 345 C305 370 280 380 256 385 C232 380 207 370 197 345 C217 355 237 350 256 335 Z" 
+        fill="url(#gold)" />
+</svg>

@@ -70,26 +70,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       title: 'రైతు సంక్షేమం & పంటలు',
       enTitle: 'Farmers & Agriculture',
       icon: Tractor,
-      description: 'వైఎస్సార్ రైతు భరోసా, పీఎం-కిసాన్, కౌలు రైతుల కార్డులు',
-      enDescription: 'YSR Rythu Bharosa, PM-KISAN, tenant farmer support cards',
+      description: 'అన్నదాత సుఖీభవ, పీఎం-కిసాన్, కౌలు రైతుల రక్షణ కార్డులు',
+      enDescription: 'Annadata Sukhibhava, PM-KISAN, tenant farmer support cards',
       count: isTe ? '3 పథకాలు' : '3 Schemes'
     },
     {
       id: 'women_shg',
-      title: 'మహిళా సాధికారత & డ్వాక్రా',
-      enTitle: 'Women & Self Help Groups',
+      title: 'మహిళా సాధికారత & సంక్షేమం',
+      enTitle: 'Women & Social Welfare',
       icon: Users,
-      description: 'వైఎస్సార్ చేయూత, ఆసరా, సున్నా వడ్డీ రుణాలు',
-      enDescription: 'YSR Cheyutha, YSR Aasara, DWCRA interest-free loans',
-      count: isTe ? '2 పథకాలు' : '2 Schemes'
+      description: 'ఆడబిడ్డ నిధి, స్త్రీ శక్తి ఉచిత బస్సు, దీపం 2.0 ఉచిత సిలిండర్లు',
+      enDescription: 'Aadabidda Nidhi, Sthree Shakthi free bus, Deepam 2.0 free cylinders',
+      count: isTe ? '3 పథకాలు' : '3 Schemes'
     },
     {
       id: 'pensions',
       title: 'వృద్ధాప్య & వికలాంగ పింఛన్లు',
       enTitle: 'Social Security Pensions',
       icon: HeartHandshake,
-      description: 'వైఎస్సార్ పింఛన్ కానుక, వితంతు, దివ్యాంగుల పింఛన్లు',
-      enDescription: 'Doorstep monthly old-age, widow, and disability welfare pensions',
+      description: 'ఎన్టీఆర్ భరోసా పింఛన్లు, వితంతు, దివ్యాంగుల పింఛన్లు',
+      enDescription: 'NTR Bharosa monthly old-age, widow, and disability welfare pensions',
       count: isTe ? '1 పథకం' : '1 Scheme'
     },
     {
@@ -97,17 +97,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       title: 'గృహ నిర్మాణం & సౌర విద్యుత్',
       enTitle: 'Housing & Solar Energy',
       icon: Home,
-      description: 'పేదలందరికీ ఇళ్లు, పీఎం సూర్య ఘర్ ఉచిత విద్యుత్',
-      enDescription: 'Navaratnalu house sites, PM Surya Ghar 300 units free solar power',
+      description: 'పీఎం ఆవాస్ యోజన గ్రామీణ్, పీఎం సూర్య ఘర్ ఉచిత విద్యుత్',
+      enDescription: 'PM Awas Yojana Gramin, PM Surya Ghar 300 units free solar power',
       count: isTe ? '2 పథకాలు' : '2 Schemes'
     },
     {
       id: 'health',
-      title: 'ఉచిత వైద్యం & ఆరోగ్యశ్రీ',
+      title: 'ఉచిత వైద్యం & ఎన్టీఆర్ వైద్య సేవ',
       enTitle: 'Health & Medical Care',
       icon: ShieldCheck,
-      description: 'ఆరోగ్యశ్రీ రూ. 25 లక్షల ఉచిత వైద్యం, ఆయుష్మాన్ భారత్',
-      enDescription: 'Dr. YSR Aarogyasri Rs. 25 Lakhs cashless treatment, Ayushman Bharat',
+      description: 'ఎన్టీఆర్ వైద్య సేవ రూ. 25 లక్షల ఉచిత వైద్యం, ఆయుష్మాన్ భారత్',
+      enDescription: 'Dr. NTR Vaidya Seva Rs. 25 Lakhs cashless treatment, Ayushman Bharat',
       count: isTe ? '1 పథకం' : '1 Scheme'
     },
     {

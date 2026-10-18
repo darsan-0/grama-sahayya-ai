@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { formatTimestampDisplay } from '../utils/applicationPersistence';
 
 interface ApplicationTrackerProps {
   onStartNewApplication: () => void;
@@ -56,6 +57,13 @@ export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({ onStartN
 
   useEffect(() => {
     fetchSessions();
+    const handleUpdate = () => {
+      fetchSessions();
+    };
+    window.addEventListener('gs_application_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('gs_application_updated', handleUpdate);
+    };
   }, [currentUser]);
 
   const handleUpdateStatus = async (sessionId: string, newStatus: ApplicationStatus) => {
@@ -187,7 +195,7 @@ export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({ onStartN
                       {session.teSchemeName || session.schemeName}
                     </h3>
                     <div className="text-xs text-secondary-text mt-0.5">
-                      {session.schemeName} • Created: {new Date(session.createdAt).toLocaleDateString()}
+                      {session.schemeName} • Created: {formatTimestampDisplay(session.createdAt)}
                     </div>
                   </div>
 

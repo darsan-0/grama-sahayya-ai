@@ -43,6 +43,9 @@ import {
 import { db } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { VERIFIED_SCHEMES } from '../data/schemes';
+import { ARCHIVED_HISTORICAL_SCHEMES } from '../data/archivedHistoricalSchemes';
+import { VERIFIED_PUBLIC_SERVICES } from '../data/publicServices';
+import { ARCHIVED_HISTORICAL_PUBLIC_SERVICES } from '../data/archivedHistoricalPublicServices';
 import {
   Scheme,
   AdminRole,
@@ -67,8 +70,18 @@ export const AdminDashboard: React.FC = () => {
 
   // Tab State
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'scheme_analytics' | 'user_analytics' | 'applications' | 'schemes' | 'admin_audit'
+    'overview' | 'scheme_analytics' | 'user_analytics' | 'applications' | 'schemes' | 'admin_audit' | 'services_audit'
   >('overview');
+
+  // Scheme review view mode: active vs archived historical records
+  const [schemeViewMode, setSchemeViewMode] = useState<'active' | 'archived'>('active');
+
+  // Public services view mode and verification test state
+  const [servicesViewMode, setServicesViewMode] = useState<'active' | 'archived'>('active');
+  const [servicesSearch, setServicesSearch] = useState('');
+  const [urlToTest, setUrlToTest] = useState('');
+  const [testingUrl, setTestingUrl] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
 
   // Loading & Live Data State
   const [loadingData, setLoadingData] = useState(true);
@@ -549,6 +562,17 @@ export const AdminDashboard: React.FC = () => {
             }`}
           >
             6. RBAC & Audit Trail
+          </button>
+        )}
+
+        {(isSchemeReviewer || isSuperAdmin) && (
+          <button
+            onClick={() => setActiveTab('services_audit')}
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+              activeTab === 'services_audit' ? 'bg-white text-charcoal shadow-2xs font-semibold' : 'text-secondary-text hover:text-charcoal'
+            }`}
+          >
+            7. Services & Link Audit
           </button>
         )}
       </div>
@@ -1148,7 +1172,407 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Role Assignment Modal */}
+      {/* TAB 7: Public Services & Link Audit */}
+      {activeTab === 'services_audit' && (isSchemeReviewer || isSuperAdmin) && (
+        <div className="space-y-6">
+          {/* Header & Export Bar */}
+          <div className="bg-white rounded-2xl border border-[#E5E5DF] p-6 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E5DF] pb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[11px] font-bold text-forest bg-[#EBF3F0] px-2.5 py-0.5 rounded-full border border-[#C8DDD6]">
+                    Official Service Governance
+                  </span>
+                  <span className="text-xs text-secondary-text">
+                    Audited: Oct 2026
+                  </span>
+                </div>
+                <h3 className="font-semibold text-lg text-charcoal flex items-center gap-2">
+                  <span>Public Services Catalogue & URL Verification Audit</span>
+                </h3>
+                <p className="text-xs text-secondary-text mt-1 max-w-2xl">
+                  Inspect official government portals, test link resolution with SSRF-safe checks, and review verified vs archived historical service endpoints.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/public-services/audit-report');
+                      const data = await res.json();
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `grama_sahayya_audit_report_${new Date().toISOString().slice(0, 10)}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    } catch (err) {
+                      console.error('Failed to export audit report:', err);
+                    }
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-forest hover:bg-[#064B3A] text-white text-xs font-medium shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export Audit JSON</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Metric counters */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-3 bg-[#FAF9F5] rounded-xl border border-[#E5E5DF]">
+                <div className="text-[11px] text-secondary-text">Verified Active Services</div>
+                <div className="text-lg font-semibold text-forest mt-0.5">{VERIFIED_PUBLIC_SERVICES.length}</div>
+              </div>
+              <div className="p-3 bg-[#FAF9F5] rounded-xl border border-[#E5E5DF]">
+                <div className="text-[11px] text-secondary-text">Andhra Pradesh Services</div>
+                <div className="text-lg font-semibold text-charcoal mt-0.5">
+                  {VERIFIED_PUBLIC_SERVICES.filter(s => s.govLevel === 'state').length}
+                </div>
+              </div>
+              <div className="p-3 bg-[#FAF9F5] rounded-xl border border-[#E5E5DF]">
+                <div className="text-[11px] text-secondary-text">Central Services</div>
+                <div className="text-lg font-semibold text-charcoal mt-0.5">
+                  {VERIFIED_PUBLIC_SERVICES.filter(s => s.govLevel === 'central').length}
+                </div>
+              </div>
+              <div className="p-3 bg-[#FAF9F5] rounded-xl border border-[#E5E5DF]">
+                <div className="text-[11px] text-secondary-text">Archived Discontinued</div>
+                <div className="text-lg font-semibold text-[#8E918C] mt-0.5">{ARCHIVED_HISTORICAL_PUBLIC_SERVICES.length}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Live SSRF-Safe URL Verification Tool */}
+          <div className="bg-white rounded-2xl border border-[#E5E5DF] p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <h4 className="font-semibold text-sm text-charcoal flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-forest" />
+                  <span>Live SSRF-Protected Official URL Verifier</span>
+                </h4>
+                <p className="text-xs text-secondary-text">
+                  Verifies connectivity, SSL, and redirect chains. Blocks private network ranges, loopback addresses, and non-HTTP protocols.
+                </p>
+              </div>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!urlToTest.trim()) return;
+                setTestingUrl(true);
+                setTestResult(null);
+                try {
+                  const res = await fetch('/api/admin/verify-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: urlToTest.trim() })
+                  });
+                  const data = await res.json();
+                  setTestResult(data);
+                } catch (err: any) {
+                  setTestResult({
+                    url: urlToTest,
+                    isAllowed: false,
+                    status: 'error',
+                    error: err.message || 'Failed to reach server'
+                  });
+                } finally {
+                  setTestingUrl(false);
+                }
+              }}
+              className="flex flex-col sm:flex-row items-center gap-2"
+            >
+              <input
+                type="text"
+                value={urlToTest}
+                onChange={(e) => setUrlToTest(e.target.value)}
+                placeholder="Enter official portal URL to test (e.g., https://onlineap.meeseva.gov.in/)"
+                className="w-full sm:flex-1 h-10 px-3.5 rounded-xl border border-[#E5E5DF] bg-[#FAF9F5] text-xs text-charcoal focus:bg-white focus:outline-none focus:border-forest"
+              />
+              <button
+                type="submit"
+                disabled={testingUrl || !urlToTest.trim()}
+                className="w-full sm:w-auto h-10 px-4 rounded-xl bg-forest hover:bg-[#064B3A] text-white text-xs font-medium shadow-2xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+              >
+                {testingUrl ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Run Verification</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Test Result Display */}
+            {testResult && (
+              <div className={`p-4 rounded-xl border text-xs space-y-2 animate-in fade-in duration-200 ${
+                testResult.status === 'reachable'
+                  ? 'bg-[#EBF3F0] border-[#C8DDD6] text-charcoal'
+                  : testResult.status === 'redirected'
+                  ? 'bg-[#FEFCE8] border-[#FEF08A] text-charcoal'
+                  : 'bg-[#FEF2F2] border-[#FECACA] text-charcoal'
+              }`}>
+                <div className="flex items-center justify-between font-semibold">
+                  <div className="flex items-center gap-2">
+                    {testResult.status === 'reachable' && <CheckCircle2 className="w-4 h-4 text-forest" />}
+                    {testResult.status === 'redirected' && <AlertTriangle className="w-4 h-4 text-[#CA8A04]" />}
+                    {testResult.status !== 'reachable' && testResult.status !== 'redirected' && <AlertTriangle className="w-4 h-4 text-[#DC2626]" />}
+                    <span className="uppercase text-[11px] tracking-wider">
+                      Status: {testResult.status} {testResult.statusCode ? `(HTTP ${testResult.statusCode})` : ''}
+                    </span>
+                  </div>
+                  {testResult.responseTimeMs && (
+                    <span className="text-[11px] text-secondary-text font-mono">
+                      Response time: {testResult.responseTimeMs}ms
+                    </span>
+                  )}
+                </div>
+
+                <div className="font-mono text-[11px] text-secondary-text break-all">
+                  Tested URL: {testResult.url}
+                </div>
+
+                {testResult.finalUrl && testResult.finalUrl !== testResult.url && (
+                  <div className="font-mono text-[11px] text-secondary-text break-all">
+                    Final Redirect: <strong>{testResult.finalUrl}</strong>
+                  </div>
+                )}
+
+                {testResult.error && (
+                  <div className="text-[11px] text-[#DC2626] font-medium">
+                    Diagnostic Error: {testResult.error}
+                  </div>
+                )}
+
+                {testResult.cached && (
+                  <div className="text-[10px] text-secondary-text italic">
+                    (Result served from conservative verification cache to protect government servers)
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Active vs Archived View Mode Switcher */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 bg-white p-1 rounded-xl border border-[#E5E5DF] text-xs">
+              <button
+                type="button"
+                onClick={() => setServicesViewMode('active')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  servicesViewMode === 'active'
+                    ? 'bg-forest text-white font-semibold shadow-2xs'
+                    : 'text-secondary-text hover:text-charcoal'
+                }`}
+              >
+                Active Verified Services ({VERIFIED_PUBLIC_SERVICES.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setServicesViewMode('archived')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  servicesViewMode === 'archived'
+                    ? 'bg-forest text-white font-semibold shadow-2xs'
+                    : 'text-secondary-text hover:text-charcoal'
+                }`}
+              >
+                Archived Discontinued Records ({ARCHIVED_HISTORICAL_PUBLIC_SERVICES.length})
+              </button>
+            </div>
+
+            <div className="relative max-w-xs w-full">
+              <Search className="w-3.5 h-3.5 text-secondary-text absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={servicesSearch}
+                onChange={(e) => setServicesSearch(e.target.value)}
+                placeholder="Search services or departments..."
+                className="w-full h-9 pl-9 pr-3 rounded-xl border border-[#E5E5DF] bg-white text-xs text-charcoal focus:outline-none focus:border-forest"
+              />
+            </div>
+          </div>
+
+          {/* Active Services Table */}
+          {servicesViewMode === 'active' && (
+            <div className="bg-white rounded-2xl border border-[#E5E5DF] shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-charcoal">
+                  <thead className="bg-[#FAF9F5] text-secondary-text uppercase tracking-wider font-medium border-b border-[#E5E5DF]">
+                    <tr>
+                      <th className="p-3">Service Name</th>
+                      <th className="p-3">Department & Level</th>
+                      <th className="p-3">Category</th>
+                      <th className="p-3">Statutory Fee</th>
+                      <th className="p-3">Official Links</th>
+                      <th className="p-3">Audit Details</th>
+                      <th className="p-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E5DF]">
+                    {VERIFIED_PUBLIC_SERVICES
+                      .filter(s => {
+                        if (!servicesSearch.trim()) return true;
+                        const q = servicesSearch.toLowerCase();
+                        return (
+                          s.name.toLowerCase().includes(q) ||
+                          s.teName.toLowerCase().includes(q) ||
+                          s.department.toLowerCase().includes(q) ||
+                          s.category.toLowerCase().includes(q)
+                        );
+                      })
+                      .map((svc) => (
+                        <tr key={svc.id} className="hover:bg-[#FAF9F5]/60 transition-colors">
+                          <td className="p-3 font-medium text-charcoal max-w-[220px]">
+                            <div className="font-semibold text-charcoal">{svc.name}</div>
+                            <div className="text-[11px] text-secondary-text truncate">{svc.teName}</div>
+                          </td>
+                          <td className="p-3 text-secondary-text max-w-[180px]">
+                            <span className="inline-block text-[10px] font-semibold bg-[#EBF3F0] text-forest px-2 py-0.5 rounded-full border border-[#C8DDD6] mb-1">
+                              {svc.govLevel === 'state' ? 'Andhra Pradesh' : 'Central'}
+                            </span>
+                            <div className="text-[11px] text-charcoal font-medium truncate">{svc.department}</div>
+                          </td>
+                          <td className="p-3 text-secondary-text capitalize">
+                            <span className="text-[11px] bg-[#FAF9F5] px-2 py-1 rounded-md border border-[#E5E5DF]">
+                              {svc.category.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td className="p-3 text-forest font-semibold max-w-[120px] truncate" title={svc.officialFee}>
+                            {svc.officialFee.split(';')[0]}
+                          </td>
+                          <td className="p-3 text-[11px] space-y-1">
+                            <div>
+                              <a
+                                href={svc.officialApplicationUrl.split(' ')[0]}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-forest hover:underline font-medium flex items-center gap-1"
+                              >
+                                <span>Portal</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                            <div>
+                              <a
+                                href={svc.officialInfoUrl.split(' ')[0]}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-secondary-text hover:text-charcoal flex items-center gap-1"
+                              >
+                                <span>Info</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            </div>
+                          </td>
+                          <td className="p-3 text-[11px] text-secondary-text max-w-[160px]">
+                            <div className="flex items-center gap-1 text-forest font-medium">
+                              <ShieldCheck className="w-3 h-3" />
+                              <span>{svc.status}</span>
+                            </div>
+                            <div className="text-[10px] text-secondary-text truncate">{svc.lastVerifiedDate}</div>
+                            <div className="text-[10px] text-secondary-text truncate" title={svc.verificationSource}>
+                              {svc.verificationSource.split('/')[0]}
+                            </div>
+                          </td>
+                          <td className="p-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = svc.officialApplicationUrl.split(' ')[0];
+                                setUrlToTest(url);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-[#FAF9F5] hover:bg-[#EBF3F0] text-forest border border-[#C8DDD6] text-[11px] font-medium transition-colors cursor-pointer"
+                              title="Load into Live URL Verifier"
+                            >
+                              Test URL
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Archived Historical Services Table */}
+          {servicesViewMode === 'archived' && (
+            <div className="bg-white rounded-2xl border border-[#E5E5DF] shadow-2xs overflow-hidden space-y-4 p-5">
+              <div className="p-3.5 bg-[#FEF2F2] border border-[#FECACA] rounded-xl text-xs text-charcoal">
+                <strong>Historical Archive Policy:</strong> In compliance with Government Services Verification directives, obsolete, superseded, or defunct schemes/services are permanently retained here with explicit deprecation rationale, superseding IDs, and audit dates rather than deleting records or pointing users to misleading links.
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-charcoal">
+                  <thead className="bg-[#FAF9F5] text-secondary-text uppercase tracking-wider font-medium border-b border-[#E5E5DF]">
+                    <tr>
+                      <th className="p-3">Archived Service</th>
+                      <th className="p-3">Department</th>
+                      <th className="p-3">Archive Date</th>
+                      <th className="p-3">Archive Reason</th>
+                      <th className="p-3">Superseded By</th>
+                      <th className="p-3">Historical Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E5DF]">
+                    {ARCHIVED_HISTORICAL_PUBLIC_SERVICES.map((archived) => (
+                      <tr key={archived.id} className="hover:bg-[#FAF9F5]/60 transition-colors">
+                        <td className="p-3 font-semibold text-charcoal">
+                          <div>{archived.name}</div>
+                          <div className="text-[11px] text-secondary-text">{archived.teName}</div>
+                        </td>
+                        <td className="p-3 text-secondary-text">{archived.department}</td>
+                        <td className="p-3 text-secondary-text font-mono text-[11px]">{archived.archivedDate}</td>
+                        <td className="p-3 text-charcoal max-w-sm">
+                          <span className="text-[11px] text-[#991B1B] bg-[#FEF2F2] px-2 py-0.5 rounded border border-[#FECACA] block mb-1 font-semibold">
+                            Discontinued
+                          </span>
+                          <span className="text-secondary-text text-[11px] leading-relaxed block">
+                            {archived.archiveReason}
+                          </span>
+                        </td>
+                        <td className="p-3 text-forest font-medium">
+                          {archived.supersededByServiceId ? (
+                            <span className="font-mono text-[11px] bg-[#EBF3F0] px-2 py-0.5 rounded border border-[#C8DDD6]">
+                              {archived.supersededByServiceId}
+                            </span>
+                          ) : (
+                            <span className="text-secondary-text">N/A</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <a
+                            href={archived.officialInfoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-secondary-text hover:text-charcoal text-[11px] flex items-center gap-1"
+                          >
+                            <span>Archive Notice</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {showRoleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E5E5DF] space-y-4">

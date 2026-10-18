@@ -29,6 +29,13 @@ import {
   getSchemeDocs
 } from '../i18n/languages';
 import { trackEngagementEvent, recordApplicationJourney } from '../utils/analyticsTracker';
+import {
+  validateReferenceNumber,
+  recordApplicationReference,
+  saveApplicationProgress,
+  loadSavedApplicationProgress,
+  formatTimestampDisplay
+} from '../utils/applicationPersistence';
 
 interface ApplicationPreparationWorkflowProps {
   scheme?: Scheme | null;
@@ -61,14 +68,70 @@ export const ApplicationPreparationWorkflow: React.FC<ApplicationPreparationWork
   });
 
   const [reportedRefNumber, setReportedRefNumber] = useState('');
+  const [existingRecordedRef, setExistingRecordedRef] = useState<string | null>(null);
+  const [existingRecordedTime, setExistingRecordedTime] = useState<string | null>(null);
   const [savingSession, setSavingSession] = useState(false);
+  const [recordingRef, setRecordingRef] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [savedSuccessMessage, setSavedSuccessMessage] = useState<string | null>(null);
+  const [restoredProgressNotice, setRestoredProgressNotice] = useState<string | null>(null);
   const [copiedDraft, setCopiedDraft] = useState(false);
 
   const schemeTitle = getSchemeTitle(activeScheme, currentLanguage);
   const schemeBenefit = getSchemeBenefit(activeScheme, currentLanguage);
   const schemeRules = getSchemeRules(activeScheme, currentLanguage);
   const schemeDocs = getSchemeDocs(activeScheme, currentLanguage);
+
+  // Restore saved application progress when user returns or refreshes the page
+  useEffect(() => {
+    let isMounted = true;
+    async function restore() {
+      if (!currentUser?.uid || !activeScheme?.id) return;
+      try {
+        const saved = await loadSavedApplicationProgress(currentUser.uid, activeScheme.id);
+        if (saved && isMounted) {
+          if (saved.currentStep && saved.currentStep >= 1) {
+            setCurrentStep(saved.currentStep);
+          }
+          if (saved.preparedAnswers && Object.keys(saved.preparedAnswers).length > 0) {
+            setFormData((prev) => ({ ...prev, ...saved.preparedAnswers }));
+          }
+          if (saved.documentChecks && Object.keys(saved.documentChecks).length > 0) {
+            setDocumentChecks(saved.documentChecks);
+          } else if (saved.completedDocuments && Array.isArray(saved.completedDocuments)) {
+            const checks: Record<string, boolean> = {};
+            saved.completedDocuments.forEach((docName) => {
+              checks[docName] = true;
+            });
+            setDocumentChecks(checks);
+          }
+          if (saved.officialSubmissionReference) {
+            setExistingRecordedRef(saved.officialSubmissionReference);
+            setExistingRecordedTime(saved.reportedSubmittedAt || saved.updatedAt || null);
+          } else {
+            setExistingRecordedRef(null);
+            setExistingRecordedTime(null);
+          }
+          setRestoredProgressNotice(
+            isTe
+              ? 'గతంలో భద్రపరచబడిన దరఖాస్తు పురోగతి పునరుద్ధరించబడింది.'
+              : 'Restored your previously saved application progress.'
+          );
+          setTimeout(() => {
+            if (isMounted) setRestoredProgressNotice(null);
+          }, 6000);
+        }
+      } catch (err) {
+        console.warn('Could not restore saved progress:', err);
+      }
+    }
+    restore();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser?.uid, activeScheme?.id]);
 
   // Toggle document checklist
   const handleToggleDocument = (docName: string) => {
@@ -122,69 +185,135 @@ Generated via Grama Sahayya AI Citizen Assistant
     }
   }, [activeScheme.id, currentUser?.uid]);
 
-  const handleSaveAssistanceSession = async (reportedStatus: ApplicationStatus = 'ready_to_submit') => {
-    if (!currentUser) return;
-    setSavingSession(true);
+  /**
+   * 1. Record Reference Handler
+   * Validates input, saves to authenticated user's account, updates journey,
+   * clears input on success, and broadcasts update to dashboard immediately.
+   */
+  const handleRecordReference = async () => {
+    // Disable repeated clicks while save or record is in progress
+    if (recordingRef || savingSession) return;
 
+    setValidationError(null);
+    setOperationError(null);
+    setSavedSuccess(false);
+
+    if (!currentUser) {
+      const msg = isTe
+        ? 'దరఖాస్తు రసీదు సంఖ్యను భద్రపరచడానికి దయచేసి లాగిన్ అవ్వండి.'
+        : 'Please sign in to record your application reference number.';
+      setValidationError(msg);
+      speakNotification(msg);
+      return;
+    }
+
+    const validation = validateReferenceNumber(reportedRefNumber);
+    if (!validation.isValid) {
+      setValidationError(validation.error || 'Please enter a valid reference number.');
+      return;
+    }
+
+    setRecordingRef(true);
     try {
-      const sessionId = `session-${currentUser.uid.slice(0, 5)}-${activeScheme.id}-${Date.now()}`;
-      const sessionData: AssistanceSession = {
-        id: sessionId,
+      const result = await recordApplicationReference({
         userId: currentUser.uid,
-        schemeId: activeScheme.id,
-        schemeName: activeScheme.officialName,
-        teSchemeName: activeScheme.teName,
-        status: reportedRefNumber ? 'reported_submitted' : reportedStatus,
-        isVerifiedDirectSubmission: false, // Honesty requirement: Workflow A guided assistance
-        officialSubmissionReference: reportedRefNumber || undefined,
+        scheme: activeScheme,
+        referenceNumber: validation.trimmed,
+        currentStep: 4,
         preparedAnswers: formData,
-        completedDocuments: Object.keys(documentChecks).filter((k) => documentChecks[k]),
-        reportedSubmittedAt: reportedRefNumber ? new Date().toISOString() : undefined,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const sessionRef = doc(db, 'assistanceSessions', sessionId);
-      await setDoc(sessionRef, {
-        ...sessionData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        documentChecks,
+        completedDocuments: Object.keys(documentChecks).filter((k) => documentChecks[k])
       });
 
-      // Record authoritative application journey
-      await recordApplicationJourney({
-        userId: currentUser.uid,
-        schemeId: activeScheme.id,
-        schemeName: activeScheme.teName || activeScheme.officialName,
-        officialName: activeScheme.officialName,
-        category: activeScheme.category,
-        status: reportedRefNumber ? 'submitted_self_reported' : 'application_in_progress',
-        statusSource: reportedRefNumber ? 'citizen_self_reported' : 'guidance_workflow',
-        officialSubmissionReference: reportedRefNumber || undefined,
-      });
-
-      if (reportedRefNumber) {
-        await trackEngagementEvent('application_submission_reported', {
-          userId: currentUser.uid,
-          schemeId: activeScheme.id,
-          metadata: { ackNumber: reportedRefNumber }
-        });
+      if (result.success && result.session) {
+        // Clear input only after a successful database save!
+        setReportedRefNumber('');
+        setExistingRecordedRef(validation.trimmed);
+        setExistingRecordedTime(new Date().toISOString());
+        setSavedSuccess(true);
+        const successMsg = result.isDuplicate
+          ? (isTe
+              ? `రసీదు సంఖ్య "${validation.trimmed}" ఇప్పటికే మీ డాష్‌బోర్డ్‌లో నమోదు చేయబడింది.`
+              : `Application reference "${validation.trimmed}" is already recorded in your dashboard.`)
+          : (isTe
+              ? `రసీదు సంఖ్య "${validation.trimmed}" విజయవంతంగా మీ డాష్‌బోర్డ్‌లో నమోదు చేయబడింది!`
+              : `Application reference "${validation.trimmed}" successfully recorded in your dashboard!`);
+        setSavedSuccessMessage(successMsg);
+        speakNotification(
+          isTe ? 'రసీదు సంఖ్య నమోదు చేయబడింది' : 'Reference number recorded',
+          successMsg
+        );
+        if (onSessionCreated) onSessionCreated(result.session);
+      } else {
+        const errorMsg = result.error || 'Could not record reference number. Please try again.';
+        setOperationError(errorMsg);
+        speakNotification(errorMsg);
       }
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Database error occurred while recording reference.';
+      setOperationError(errorMsg);
+    } finally {
+      setRecordingRef(false);
+    }
+  };
 
-      setSavedSuccess(true);
-      speakNotification(
-        isTe ? 'దరఖాస్తు సమాచారం భద్రపరచబడింది' : 'Application progress saved successfully',
-        reportedRefNumber
-          ? (isTe ? `రసీదు సంఖ్య ${reportedRefNumber} నమోదు చేయబడింది.` : `Reference number ${reportedRefNumber} recorded.`)
-          : (isTe ? 'మీ దరఖాస్తు ప్రణాళిక సిద్ధంగా ఉంది.' : 'Your draft application is ready.')
-      );
-      if (onSessionCreated) onSessionCreated(sessionData);
-    } catch (err) {
-      console.warn('Error saving assistance session to Firestore:', err);
-      setSavedSuccess(true);
-      speakNotification(
-        isTe ? 'దరఖాస్తు ప్రణాళిక సేవ్ చేయబడింది' : 'Draft application saved'
-      );
+  /**
+   * 2. Save Progress to Dashboard Handler
+   * Real persistence of workflow data (answers, checklist, step, reference).
+   * Prevents duplicates with deterministic ID, disables repeated clicks,
+   * shows success ONLY on database confirmation, and updates dashboard.
+   */
+  const handleSaveProgress = async () => {
+    // Disable repeated clicks during an ongoing save
+    if (savingSession || recordingRef) return;
+
+    setOperationError(null);
+    setValidationError(null);
+    setSavedSuccess(false);
+
+    if (!currentUser) {
+      const msg = isTe
+        ? 'మీ దరఖాస్తు పురోగతిని డాష్‌బోర్డ్‌లో భద్రపరచడానికి దయచేసి లాగిన్ అవ్వండి.'
+        : 'Please sign in to save your application progress to the dashboard.';
+      setOperationError(msg);
+      speakNotification(msg);
+      return;
+    }
+
+    setSavingSession(true);
+    try {
+      const trimmedRef = reportedRefNumber.trim();
+      const activeRef = existingRecordedRef || (trimmedRef ? trimmedRef : undefined);
+
+      const result = await saveApplicationProgress({
+        userId: currentUser.uid,
+        scheme: activeScheme,
+        currentStep,
+        formData,
+        documentChecks,
+        reportedRefNumber: activeRef,
+        status: activeRef ? 'reported_submitted' : (currentStep >= 4 ? 'ready_to_submit' : 'documents_preparing')
+      });
+
+      if (result.success && result.session) {
+        setSavedSuccess(true);
+        const successMsg = isTe
+          ? 'మీ దరఖాస్తు తయారీ వివరాలు విజయవంతంగా మీ డాష్‌బోర్డ్‌లో భద్రపరచబడ్డాయి!'
+          : 'Your application progress has been saved to your dashboard!';
+        setSavedSuccessMessage(successMsg);
+        speakNotification(
+          isTe ? 'దరఖాస్తు సమాచారం భద్రపరచబడింది' : 'Progress saved successfully',
+          successMsg
+        );
+        if (onSessionCreated) onSessionCreated(result.session);
+      } else {
+        const errorMsg = result.error || 'Could not save progress. Please try again.';
+        setOperationError(errorMsg);
+        speakNotification(errorMsg);
+      }
+    } catch (err: any) {
+      const errorMsg = err?.message || 'An unexpected error occurred while saving your progress.';
+      setOperationError(errorMsg);
     } finally {
       setSavingSession(false);
     }
@@ -223,10 +352,27 @@ Generated via Grama Sahayya AI Citizen Assistant
           <select
             value={selectedSchemeId}
             onChange={(e) => {
-              setSelectedSchemeId(e.target.value);
+              const newSchemeId = e.target.value;
+              setSelectedSchemeId(newSchemeId);
               setCurrentStep(1);
               setDocumentChecks({});
+              setReportedRefNumber('');
+              setExistingRecordedRef(null);
+              setExistingRecordedTime(null);
+              setValidationError(null);
+              setOperationError(null);
               setSavedSuccess(false);
+              setSavedSuccessMessage(null);
+              setRestoredProgressNotice(null);
+              setFormData({
+                applicantName: userProfile?.displayName || '',
+                district: userProfile?.district || 'Guntur',
+                courseOrOccupation: userProfile?.educationLevel || 'Undergraduate',
+                annualIncome: userProfile?.approxAnnualIncome ? `₹${userProfile.approxAnnualIncome}` : '₹1,20,000',
+                rationCardAvailable: 'Yes, Rice Card available',
+                bankSeededAadhaar: 'Yes, NPCI seeded',
+                collegeOrVillageName: '',
+              });
             }}
             className="w-full p-2.5 rounded-xl border border-[#E5E5DF] bg-white text-xs sm:text-sm text-[#242824] font-medium focus:outline-none focus:border-[#075B46]"
           >
@@ -246,9 +392,11 @@ Generated via Grama Sahayya AI Citizen Assistant
             { step: 3, title: isTe ? '3. సమాధానాలు' : '3. Draft Answers' },
             { step: 4, title: isTe ? '4. సమీక్ష' : '4. Review & Apply' },
           ].map((item) => (
-            <div
+            <button
               key={item.step}
-              className={`p-2.5 rounded-xl border text-center text-xs font-medium transition-all ${
+              type="button"
+              onClick={() => setCurrentStep(item.step)}
+              className={`p-2.5 rounded-xl border text-center text-xs font-medium transition-all cursor-pointer ${
                 currentStep === item.step
                   ? 'bg-[#075B46] text-white border-[#075B46] shadow-xs'
                   : currentStep > item.step
@@ -257,10 +405,49 @@ Generated via Grama Sahayya AI Citizen Assistant
               }`}
             >
               {item.title}
-            </div>
+            </button>
           ))}
         </div>
       </div>
+
+      {/* Status Feedback Banners for steps 1-3 */}
+      {currentStep < 4 && operationError && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 shadow-2xs">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{operationError}</span>
+        </div>
+      )}
+
+      {currentStep < 4 && savedSuccess && (
+        <div className="p-3.5 rounded-xl bg-[#EBF3F0] border border-[#C8DDD6] text-[#075B46] text-xs flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-[#075B46] shrink-0" />
+            <span>
+              {savedSuccessMessage || (
+                isTe
+                  ? 'మీ దరఖాస్తు తయారీ వివరాలు విజయవంతంగా భద్రపరచబడ్డాయి! మీ డాష్‌బోర్డ్‌లో చూడవచ్చు.'
+                  : 'Your preparation session has been saved to your dashboard!'
+              )}
+            </span>
+          </div>
+          {onNavigateToTracker && (
+            <button
+              type="button"
+              onClick={onNavigateToTracker}
+              className="bg-[#075B46] text-white font-medium px-3 py-1 rounded-lg text-xs ml-2 shrink-0 cursor-pointer"
+            >
+              {isTe ? 'ట్రాకర్ తెరవండి' : 'Open Tracker'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {restoredProgressNotice && (
+        <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E5DF] text-[#686B66] text-xs flex items-center gap-2 shadow-2xs">
+          <Info className="w-4 h-4 text-[#075B46] shrink-0" />
+          <span>{restoredProgressNotice}</span>
+        </div>
+      )}
 
       {/* Step 1: Eligibility & Rules Review */}
       {currentStep === 1 && (
@@ -404,13 +591,24 @@ Generated via Grama Sahayya AI Citizen Assistant
             >
               {isTe ? 'వెనుకకు (Back)' : 'Back'}
             </button>
-            <button
-              onClick={() => setCurrentStep(3)}
-              className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-xs cursor-pointer flex items-center gap-1 transition-colors"
-            >
-              <span>{isTe ? 'తదుపరి: సమాధానాల తయారీ' : 'Next: Prepare Answers'}</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSaveProgress}
+                disabled={savingSession || recordingRef}
+                className="bg-white hover:bg-[#FAF9F5] border border-[#E5E5DF] text-[#242824] font-medium px-4 py-2 rounded-xl text-xs shadow-2xs cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5 text-[#075B46]" />
+                <span>{savingSession ? (isTe ? 'భద్రపరుస్తోంది...' : 'Saving...') : (isTe ? 'సేవ్ చేయండి' : 'Save Progress')}</span>
+              </button>
+              <button
+                onClick={() => setCurrentStep(3)}
+                className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-xs cursor-pointer flex items-center gap-1 transition-colors"
+              >
+                <span>{isTe ? 'తదుపరి: సమాధానాల తయారీ' : 'Next: Prepare Answers'}</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -505,13 +703,24 @@ Generated via Grama Sahayya AI Citizen Assistant
             >
               {isTe ? 'వెనుకకు (Back)' : 'Back'}
             </button>
-            <button
-              onClick={() => setCurrentStep(4)}
-              className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-xs cursor-pointer flex items-center gap-1 transition-colors"
-            >
-              <span>{isTe ? 'తదుపరి: సమీక్ష & పోర్టల్' : 'Next: Review & Launch Portal'}</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSaveProgress}
+                disabled={savingSession || recordingRef}
+                className="bg-white hover:bg-[#FAF9F5] border border-[#E5E5DF] text-[#242824] font-medium px-4 py-2 rounded-xl text-xs shadow-2xs cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5 text-[#075B46]" />
+                <span>{savingSession ? (isTe ? 'భద్రపరుస్తోంది...' : 'Saving...') : (isTe ? 'సేవ్ చేయండి' : 'Save Progress')}</span>
+              </button>
+              <button
+                onClick={() => setCurrentStep(4)}
+                className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-xs cursor-pointer flex items-center gap-1 transition-colors"
+              >
+                <span>{isTe ? 'తదుపరి: సమీక్ష & పోర్టల్' : 'Next: Review & Launch Portal'}</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -592,43 +801,102 @@ Generated via Grama Sahayya AI Citizen Assistant
             </a>
           </div>
 
+          {/* Restored Progress Alert */}
+          {restoredProgressNotice && (
+            <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E5DF] text-[#686B66] text-xs flex items-center gap-2">
+              <Info className="w-4 h-4 text-[#075B46] shrink-0" />
+              <span>{restoredProgressNotice}</span>
+            </div>
+          )}
+
           {/* Record citizen-reported application reference */}
-          <div className="bg-[#FAF9F5] rounded-xl p-4 border border-[#E5E5DF] space-y-2.5">
+          <div className="bg-[#FAF9F5] rounded-xl p-4 border border-[#E5E5DF] space-y-3">
             <div className="text-xs font-semibold text-[#242824]">
               {isTe ? 'మీరు ఇప్పటికే సమర్పించారా? రసీదు నంబర్ నమోదు చేయండి:' : 'Already submitted? Record Application Reference:'}
             </div>
-            <p className="text-[11px] text-[#686B66]">
+            <p className="text-[11px] text-[#686B66] leading-relaxed">
               {isTe
-                ? 'సచివాలయం లేదా ఆన్‌లైన్‌లో దరఖాస్తు చేసిన తర్వాత వచ్చిన ఎక్నాలెడ్జ్‌మెంట్ నంబర్ ఇక్కడ నమోదు చేయండి.'
+                ? 'సచివాలయం లేదా ఆన్‌లైన్‌లో దరఖాస్తు చేసిన తర్వాత వచ్చిన ఎక్నాలెడ్జ్‌మెంట్ నంబర్ ఇక్కడ నమోదు చేయండి. ఇది మీ డాష్‌బోర్డ్‌లో భద్రపరచబడుతుంది.'
                 : 'Enter your Application Acknowledgement Number to track its progress in your dashboard.'}
             </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={reportedRefNumber}
-                onChange={(e) => setReportedRefNumber(e.target.value)}
-                placeholder="e.g. AP-JVD-2026-98124 or GSWS Ack No."
-                className="flex-1 p-2 rounded-xl border border-[#E5E5DF] bg-white text-xs font-mono text-[#242824] focus:outline-none focus:border-[#075B46]"
-              />
-              <button
-                type="button"
-                onClick={() => handleSaveAssistanceSession('reported_submitted')}
-                disabled={savingSession}
-                className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-4 py-2 rounded-xl text-xs cursor-pointer shadow-xs transition-colors"
-              >
-                {savingSession ? 'Saving...' : (isTe ? 'నమోదు చేయండి' : 'Record Reference')}
-              </button>
+
+            {/* Display existing recorded reference if already saved */}
+            {existingRecordedRef && (
+              <div className="bg-[#EBF3F0] rounded-xl p-3 border border-[#C8DDD6] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div>
+                  <span className="text-[#686B66] text-[11px] block">
+                    {isTe ? 'ప్రస్తుతం నమోదైన రసీదు సంఖ్య:' : 'Recorded Acknowledgement Reference:'}
+                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="font-mono font-bold text-[#075B46] text-sm">{existingRecordedRef}</span>
+                    <span className="text-[10px] bg-white text-[#075B46] font-medium px-2 py-0.5 rounded-full border border-[#C8DDD6]">
+                      {isTe ? 'పౌరుడు నివేదించినది' : 'Citizen Self-Reported'}
+                    </span>
+                  </div>
+                </div>
+                {existingRecordedTime && (
+                  <span className="text-[10px] text-[#686B66]">
+                    {formatTimestampDisplay(existingRecordedTime)}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={reportedRefNumber}
+                  onChange={(e) => {
+                    setReportedRefNumber(e.target.value);
+                    if (validationError) setValidationError(null);
+                    if (operationError) setOperationError(null);
+                  }}
+                  placeholder={existingRecordedRef ? `Update reference (current: ${existingRecordedRef})` : 'e.g. AP-JVD-2026-98124 or GSWS Ack No.'}
+                  disabled={recordingRef || savingSession}
+                  className="flex-1 p-2 rounded-xl border border-[#E5E5DF] bg-white text-xs font-mono text-[#242824] focus:outline-none focus:border-[#075B46] disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={handleRecordReference}
+                  disabled={recordingRef || savingSession}
+                  className="bg-[#075B46] hover:bg-[#064B3A] disabled:opacity-50 text-white font-medium px-4 py-2 rounded-xl text-xs cursor-pointer shadow-xs transition-colors shrink-0"
+                >
+                  {recordingRef
+                    ? (isTe ? 'నమోదు చేస్తోంది...' : 'Recording...')
+                    : (isTe ? 'నమోదు చేయండి' : 'Record Reference')}
+                </button>
+              </div>
+
+              {/* Validation Error Message */}
+              {validationError && (
+                <div className="text-xs text-rose-600 flex items-center gap-1.5 pt-0.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{validationError}</span>
+                </div>
+              )}
             </div>
           </div>
 
+          {/* Operation Error Banner */}
+          {operationError && (
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{operationError}</span>
+            </div>
+          )}
+
+          {/* Success Banner */}
           {savedSuccess && (
             <div className="p-3.5 rounded-xl bg-[#EBF3F0] border border-[#C8DDD6] text-[#075B46] text-xs flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-[#075B46] shrink-0" />
                 <span>
-                  {isTe
-                    ? 'మీ దరఖాస్తు తయారీ వివరాలు విజయవంతంగా భద్రపరచబడ్డాయి! మీ డాష్‌బోర్డ్‌లో చూడవచ్చు.'
-                    : 'Your preparation session has been saved to your dashboard!'}
+                  {savedSuccessMessage || (
+                    isTe
+                      ? 'మీ దరఖాస్తు తయారీ వివరాలు విజయవంతంగా భద్రపరచబడ్డాయి! మీ డాష్‌బోర్డ్‌లో చూడవచ్చు.'
+                      : 'Your preparation session has been saved to your dashboard!'
+                  )}
                 </span>
               </div>
               {onNavigateToTracker && (
@@ -651,12 +919,16 @@ Generated via Grama Sahayya AI Citizen Assistant
               {isTe ? 'వెనుకకు (Back)' : 'Back'}
             </button>
             <button
-              onClick={() => handleSaveAssistanceSession('ready_to_submit')}
-              disabled={savingSession}
-              className="bg-[#075B46] hover:bg-[#064B3A] text-white font-medium px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-xs cursor-pointer flex items-center gap-1.5 transition-colors"
+              onClick={handleSaveProgress}
+              disabled={savingSession || recordingRef}
+              className="bg-[#075B46] hover:bg-[#064B3A] disabled:opacity-50 text-white font-medium px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-xs cursor-pointer flex items-center gap-1.5 transition-colors"
             >
               <Save className="w-4 h-4" />
-              <span>{isTe ? 'నా డాష్‌బోర్డ్‌లో సేవ్ చేయండి' : 'Save Progress to Dashboard'}</span>
+              <span>
+                {savingSession
+                  ? (isTe ? 'భద్రపరుస్తోంది...' : 'Saving...')
+                  : (isTe ? 'నా డాష్‌బోర్డ్‌లో సేవ్ చేయండి' : 'Save Progress to Dashboard')}
+              </span>
             </button>
           </div>
         </div>

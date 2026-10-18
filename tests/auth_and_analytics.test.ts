@@ -143,10 +143,10 @@ assert(conversionRate === '50.0', 'Conversion rate from eligibility check to app
 // 5. Application Status Categorization & Source Honesty
 // =========================================================================
 const selfReportedApp: SchemeApplication = {
-  id: 'user3_ysr-rythu-bharosa',
+  id: 'user3_annadata-sukhibhava',
   userId: 'user3',
-  schemeId: 'ysr-rythu-bharosa-pm-kisan',
-  schemeName: 'YSR Rythu Bharosa',
+  schemeId: 'annadata-sukhibhava-ap',
+  schemeName: 'Annadata Sukhibhava & PM-KISAN',
   officialName: 'Farmer Financial Assistance',
   category: 'agriculture',
   status: 'submitted_self_reported',

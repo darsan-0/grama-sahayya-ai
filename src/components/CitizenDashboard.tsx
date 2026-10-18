@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User,
   Sparkles,
@@ -9,18 +9,24 @@ import {
   Calendar,
   ChevronRight,
   SlidersHorizontal,
+  Clock,
+  ArrowRight,
+  FolderKanban,
   Bot
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { VERIFIED_SCHEMES } from '../data/schemes';
-import { Scheme } from '../types';
+import { Scheme, AssistanceSession, ApplicationStatus } from '../types';
 import { evaluateSchemeEligibility } from '../utils/eligibilityEngine';
 import {
   getSchemeTitle,
   getSchemeSubtitle,
   getSchemeBenefit
 } from '../i18n/languages';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { parseTimestampToDate, formatTimestampDisplay } from '../utils/applicationPersistence';
 
 interface CitizenDashboardProps {
   onSelectScheme: (scheme: Scheme) => void;
@@ -38,6 +44,69 @@ export const CitizenDashboard: React.FC<CitizenDashboardProps> = ({
   const { currentUser, userProfile } = useAuth();
   const { currentLanguage, t } = useLanguage();
   const isTe = currentLanguage === 'te';
+
+  const [trackedSessions, setTrackedSessions] = useState<AssistanceSession[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+
+  // Load actual persisted application records for authenticated user
+  const fetchTrackedSessions = async () => {
+    if (!currentUser?.uid) {
+      setTrackedSessions([]);
+      return;
+    }
+    setLoadingSessions(true);
+
+    // 1. Instant local cache restore
+    try {
+      const localList: AssistanceSession[] = [];
+      const prefix = `gs_assistance_session_${currentUser.uid}_`;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(prefix)) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            localList.push(JSON.parse(raw));
+          }
+        }
+      }
+      if (localList.length > 0) {
+        setTrackedSessions(localList);
+      }
+    } catch {
+      // Non-blocking
+    }
+
+    // 2. Authoritative Firestore query
+    try {
+      const q = query(
+        collection(db, 'assistanceSessions'),
+        where('userId', '==', currentUser.uid)
+      );
+      const snap = await getDocs(q);
+      const list: AssistanceSession[] = [];
+      snap.forEach((docSnap) => {
+        list.push({ ...(docSnap.data() as AssistanceSession), id: docSnap.id });
+      });
+      // Sort by updatedAt descending using safe timestamp parser
+      list.sort((a, b) => parseTimestampToDate(b.updatedAt || b.createdAt).getTime() - parseTimestampToDate(a.updatedAt || a.createdAt).getTime());
+      setTrackedSessions(list);
+    } catch (err) {
+      console.warn('[Dashboard] Could not query assistanceSessions:', err);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTrackedSessions();
+    const handleUpdate = () => {
+      fetchTrackedSessions();
+    };
+    window.addEventListener('gs_application_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('gs_application_updated', handleUpdate);
+    };
+  }, [currentUser?.uid]);
 
   // Calculate personalized scheme matches
   const personalizedSchemes = VERIFIED_SCHEMES.map((scheme) => ({
@@ -98,6 +167,128 @@ export const CitizenDashboard: React.FC<CitizenDashboardProps> = ({
         >
           {isTe ? 'సహాయకుడిని అడగండి' : 'Ask Assistant'}
         </button>
+      </div>
+
+      {/* My Applications & Saved Progress Section */}
+      <div className="bg-white rounded-2xl p-6 border border-[#E5E5DF] shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#F8F7F2] pb-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-[#242824] flex items-center gap-2">
+              <FolderKanban className="w-5 h-5 text-[#075B46]" />
+              <span>{isTe ? 'నా దరఖాస్తులు మరియు పురోగతి' : 'My Applications & Saved Progress'}</span>
+            </h2>
+            <p className="text-xs text-[#686B66] mt-0.5">
+              {isTe
+                ? 'మీరు ప్రారంభించిన దరఖాస్తులు, నమోదైన రసీదు సంఖ్యలు మరియు తయారీ వివరాలు.'
+                : 'Real-time record of your saved preparation progress and citizen-reported reference numbers.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-[#EBF3F0] text-[#075B46] font-semibold px-2.5 py-1 rounded-full border border-[#C8DDD6]">
+              {trackedSessions.length} {isTe ? 'దరఖాస్తులు' : 'Tracked'}
+            </span>
+            <button
+              onClick={() => onNavigateTab('tracker')}
+              className="text-xs font-medium text-[#075B46] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>{isTe ? 'పూర్తి ట్రాకర్' : 'Full Tracker'}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {loadingSessions && trackedSessions.length === 0 ? (
+          <div className="py-8 text-center text-xs text-[#686B66]">
+            {isTe ? 'దరఖాస్తు రికార్డులను లోడ్ చేస్తోంది...' : 'Loading saved application records from database...'}
+          </div>
+        ) : trackedSessions.length === 0 ? (
+          <div className="py-6 px-4 bg-[#FAF9F5] rounded-xl border border-dashed border-[#E5E5DF] text-center space-y-2">
+            <FileText className="w-8 h-8 text-[#686B66]/40 mx-auto" />
+            <div className="text-xs font-semibold text-[#242824]">
+              {isTe ? 'ఇంకా ఎటువంటి దరఖాస్తులు భద్రపరచబడలేదు' : 'No applications saved yet'}
+            </div>
+            <p className="text-[11px] text-[#686B66] max-w-sm mx-auto">
+              {isTe
+                ? 'ఏదైనా సంక్షేమ పథకాన్ని ఎంచుకుని "దరఖాస్తు సిద్ధం చేయండి" బటన్ ద్వారా మీ పురోగతిని సేవ్ చేసుకోవచ్చు.'
+                : 'Select any welfare scheme below to prepare your application and save your progress directly to this dashboard.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {trackedSessions.map((session) => {
+              const matchedScheme = VERIFIED_SCHEMES.find(s => s.id === session.schemeId);
+              const isSubmitted = session.status === 'reported_submitted';
+
+              return (
+                <div
+                  key={session.id}
+                  className="bg-[#FAF9F5] border border-[#E5E5DF] hover:border-[#C8DDD6] rounded-xl p-4 flex flex-col justify-between gap-3 transition-colors shadow-2xs"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-semibold text-xs sm:text-sm text-[#242824] leading-snug">
+                          {session.teSchemeName || session.schemeName}
+                        </h3>
+                        <div className="text-[11px] text-[#686B66] mt-0.5">
+                          {session.schemeName}
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                        isSubmitted
+                          ? 'bg-[#EBF3F0] text-[#075B46] border border-[#C8DDD6]'
+                          : 'bg-[#FAF7EC] text-[#8C6D1F] border border-[#EBE3CD]'
+                      }`}>
+                        {isSubmitted
+                          ? (isTe ? 'సమర్పణ నివేదించబడింది' : 'Reported Submitted')
+                          : (isTe ? 'తయారీలో ఉంది' : 'In Progress')}
+                      </span>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-lg border border-[#E5E5DF] text-xs space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-[#686B66]">{isTe ? 'రసీదు సంఖ్య:' : 'Reference No:'}</span>
+                        <span className="font-mono font-semibold text-[#242824]">
+                          {session.officialSubmissionReference || (isTe ? 'నమోదు కాలేదు' : 'Not yet recorded')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-[#686B66]">{isTe ? 'పురోగతి:' : 'Progress:'}</span>
+                        <span className="text-[#075B46] font-medium">
+                          {isTe
+                            ? `దశ ${session.currentStep || 4} • ${session.completedDocuments?.length || 0} డాక్యుమెంట్లు`
+                            : `Step ${session.currentStep || 4} of 4 • ${session.completedDocuments?.length || 0} Docs Verified`}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-[#8E918C]">
+                        <span>{isTe ? 'చివరి మార్పు:' : 'Last Updated:'}</span>
+                        <span>{formatTimestampDisplay(session.updatedAt || session.createdAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#E5E5DF] flex items-center justify-between">
+                    <span className="text-[10px] text-[#8E918C] font-mono">
+                      {session.officialSubmissionReference ? 'Citizen Self-Reported' : 'Preparation Draft'}
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (matchedScheme) {
+                          onSelectScheme(matchedScheme);
+                        }
+                        onNavigateTab('preparation');
+                      }}
+                      className="text-xs font-medium text-[#075B46] hover:text-[#064B3A] flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{isTe ? 'పునఃప్రారంభించండి' : 'Continue in Guide'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Personalized Matches Grid */}

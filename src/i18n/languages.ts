@@ -90,7 +90,7 @@ export const DICTIONARY: Record<string, Record<string, string>> = {
     footerHelplinesTitle: 'Government Helplines',
     footerSpandana: 'Spandana AP Grievance',
     footerAadhaar: 'Aadhaar UIDAI National',
-    footerAarogyasri: 'Dr. YSR Aarogyasri Trust',
+    footerAarogyasri: 'Dr. NTR Vaidya Seva Trust',
     footerPmKisan: 'PM-KISAN Farmer Helpline',
     footerMoreNumbers: 'More Helplines & Feedback →',
     footerIntegrityTitle: 'Integrity & Privacy Policy',
@@ -165,7 +165,7 @@ export const DICTIONARY: Record<string, Record<string, string>> = {
     footerHelplinesTitle: 'ప్రభుత్వ సహాయవాణి',
     footerSpandana: 'స్పందన ప్రజా సమస్యల విభాగం',
     footerAadhaar: 'ఆధార్ జాతీయ హెల్ప్‌లైన్',
-    footerAarogyasri: 'డా. వైఎస్సార్ ఆరోగ్యశ్రీ',
+    footerAarogyasri: 'డా. ఎన్టీఆర్ వైద్య సేవ ట్రస్ట్',
     footerPmKisan: 'పీఎం కిసాన్ హెల్ప్‌లైన్',
     footerMoreNumbers: 'మరిన్ని నంబర్లు & ఫీడ్‌బ్యాక్ →',
     footerIntegrityTitle: 'నిజాయితీ & గోప్యతా విధానం',
@@ -240,7 +240,7 @@ export const DICTIONARY: Record<string, Record<string, string>> = {
     footerHelplinesTitle: 'सरकारी हेल्पलाइन',
     footerSpandana: 'स्पंदना शिकायत निवारण',
     footerAadhaar: 'आधार राष्ट्रीय हेल्पलाइन',
-    footerAarogyasri: 'डॉ. वाईएसआर आरोग्यश्री',
+    footerAarogyasri: 'डॉ. एनटीआर वैद्य सेवा ट्रस्ट',
     footerPmKisan: 'पीएम किसान हेल्पलाइन',
     footerMoreNumbers: 'अधिक हेल्पलाइन व फीडबैक →',
     footerIntegrityTitle: 'विश्वसनीयता एवं गोपनीयता',
@@ -332,4 +332,9 @@ export function getServiceSteps(service: { steps: string[]; teSteps: string[] },
 export function getServiceTracking(service: { trackingInstructions: string; teTrackingInstructions: string }, lang: string): string {
   if (lang === 'te') return service.teTrackingInstructions;
   return service.trackingInstructions;
+}
+
+export function getServiceDepartment(service: { department: string; teDepartment?: string }, lang: string): string {
+  if (lang === 'te' && service.teDepartment) return service.teDepartment;
+  return service.department;
 }

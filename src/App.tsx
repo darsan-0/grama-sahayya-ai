@@ -18,6 +18,7 @@ import { AuthModal } from './components/AuthModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { SchemeDetailModal } from './components/SchemeDetailModal';
 import { EligibilityCheckerModal } from './components/EligibilityCheckerModal';
+import { InstallAppPopup } from './components/InstallAppPopup';
 import { Scheme, AssistanceSession } from './types';
 import { VERIFIED_SCHEMES } from './data/schemes';
 import { getSchemeTitle, getSchemeBenefit } from './i18n/languages';
@@ -28,7 +29,8 @@ import {
   PhoneCall,
   Lock,
   ExternalLink,
-  BookOpen
+  BookOpen,
+  Download
 } from 'lucide-react';
 
 function MainAppContent() {
@@ -50,7 +52,19 @@ function MainAppContent() {
   const [savedSchemeIds, setSavedSchemeIds] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('gs_saved_schemes');
-      return stored ? JSON.parse(stored) : ['jagananna-vidya-deevena', 'ysr-rythu-bharosa-pm-kisan'];
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            // Filter out any legacy or excluded schemes
+            const valid = parsed.filter(id => VERIFIED_SCHEMES.some(s => s.id === id));
+            return valid.length > 0 ? valid : ['talliki-vandanam-ap', 'annadata-sukhibhava-ap', 'dr-ntr-vaidya-seva-ap'];
+          }
+        } catch {
+          // fallback below
+        }
+      }
+      return ['talliki-vandanam-ap', 'annadata-sukhibhava-ap', 'dr-ntr-vaidya-seva-ap'];
     }
     return [];
   });
@@ -236,6 +250,9 @@ function MainAppContent() {
         onPrepareApplication={handlePrepareApplication}
       />
 
+      {/* Floating Install App Prompt (Bottom-Right) */}
+      <InstallAppPopup />
+
       {/* Polished, Minimalist Footer */}
       <footer className="bg-[#053C2E] text-[#D4E2DC] border-t border-[#0E4D3D] mt-20 pt-14 pb-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-12">
@@ -285,6 +302,18 @@ function MainAppContent() {
               <div>
                 <button onClick={() => setCurrentTab('tracker')} className="text-[#A3BDB3] hover:text-white transition-colors cursor-pointer">
                   {t('footerApplicationTracker')}
+                </button>
+              </div>
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('gs-open-install-prompt'));
+                  }}
+                  className="text-[#E6B84A] hover:text-[#f4cb66] transition-colors cursor-pointer flex items-center gap-1.5 font-medium"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{currentLanguage === 'te' ? 'యాప్‌ను ఇన్‌స్టాల్ చేయండి' : 'Install as App'}</span>
                 </button>
               </div>
             </div>
@@ -350,7 +379,19 @@ function MainAppContent() {
             <div>
               {t('footerCopyrightText')}
             </div>
-            <div className="flex items-center gap-2 text-[11px]">
+            <div className="flex items-center gap-3 text-[11px]">
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('gs-open-install-prompt'));
+                }}
+                className="text-[#D4E2DC] hover:text-[#E6B84A] flex items-center gap-1 cursor-pointer transition-colors"
+                title="Install Grama Sahayya AI as App"
+              >
+                <Download className="w-3 h-3 text-[#E6B84A]" />
+                <span>{currentLanguage === 'te' ? 'యాప్ ఇన్‌స్టాల్' : 'Install App'}</span>
+              </button>
+              <span className="text-[#0E4D3D]">•</span>
               <span className="w-1.5 h-1.5 rounded-full bg-[#E6B84A]" />
               <span>{t('footerTestedBadge')}</span>
             </div>

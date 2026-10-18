@@ -4,8 +4,17 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { VERIFIED_SCHEMES } from './src/data/schemes.ts';
+import { ARCHIVED_HISTORICAL_SCHEMES } from './src/data/archivedHistoricalSchemes.ts';
 import { VERIFIED_PUBLIC_SERVICES } from './src/data/publicServices.ts';
+import { ARCHIVED_HISTORICAL_PUBLIC_SERVICES } from './src/data/archivedHistoricalPublicServices.ts';
+import { verifyServiceUrl, isSafePublicUrl } from './src/utils/urlVerifier.ts';
 import { detectMessageLanguage } from './src/utils/languageDetector.ts';
+import {
+  filterPublicSchemes,
+  isYsrBrandedScheme,
+  containsYsrBranding,
+  normalizeSchemeText
+} from './src/utils/schemeNormalization.ts';
 
 dotenv.config();
 
@@ -27,11 +36,13 @@ try {
 
 // API: Health check
 app.get('/api/health', (req: Request, res: Response) => {
+  const publicSchemes = filterPublicSchemes(VERIFIED_SCHEMES);
   res.json({
     status: 'ok',
     service: 'Grama Sahayya AI Backend',
     timestamp: new Date().toISOString(),
-    schemesCount: VERIFIED_SCHEMES.length,
+    schemesCount: publicSchemes.length,
+    archivedHistoricalSchemesCount: ARCHIVED_HISTORICAL_SCHEMES.length,
     publicServicesCount: VERIFIED_PUBLIC_SERVICES.length,
   });
 });
@@ -39,45 +50,180 @@ app.get('/api/health', (req: Request, res: Response) => {
 // API: Verified Schemes catalog endpoint
 app.get('/api/schemes', (req: Request, res: Response) => {
   const { category, govLevel, search } = req.query;
-  let results = [...VERIFIED_SCHEMES];
+  const publicSchemes = filterPublicSchemes(VERIFIED_SCHEMES);
 
-  if (category) {
+  // If search query specifically contains YSR branding, return clean empty result with explanatory notice
+  if (search && typeof search === 'string' && containsYsrBranding(search)) {
+    return res.json({
+      schemes: [],
+      total: 0,
+      excludedBrandNotice: 'YSR-branded schemes have been excluded from the public directory and archived. Please refer to current verified Andhra Pradesh welfare programs such as Annadata Sukhibhava, NTR Bharosa, Dr. NTR Vaidya Seva, Talliki Vandanam, Aadabidda Nidhi, and Sthree Shakthi.'
+    });
+  }
+
+  let results = [...publicSchemes];
+
+  if (category && typeof category === 'string') {
     results = results.filter(s => s.category === category);
   }
-  if (govLevel) {
+  if (govLevel && typeof govLevel === 'string') {
     results = results.filter(s => s.govLevel === govLevel);
   }
   if (search && typeof search === 'string') {
-    const q = search.toLowerCase();
-    results = results.filter(s =>
-      s.officialName.toLowerCase().includes(q) ||
-      s.teName.toLowerCase().includes(q) ||
-      s.summary.toLowerCase().includes(q) ||
-      s.teSummary.toLowerCase().includes(q) ||
-      s.category.toLowerCase().includes(q)
-    );
+    const q = normalizeSchemeText(search);
+    results = results.filter(s => {
+      const nameNorm = normalizeSchemeText(s.officialName);
+      const teNameNorm = normalizeSchemeText(s.teName);
+      const sumNorm = normalizeSchemeText(s.summary);
+      const teSumNorm = normalizeSchemeText(s.teSummary);
+      const catNorm = normalizeSchemeText(s.category);
+      const deptNorm = normalizeSchemeText(s.department);
+
+      return (
+        nameNorm.includes(q) ||
+        teNameNorm.includes(q) ||
+        sumNorm.includes(q) ||
+        teSumNorm.includes(q) ||
+        catNorm.includes(q) ||
+        deptNorm.includes(q)
+      );
+    });
   }
 
   res.json({ schemes: results, total: results.length });
 });
 
-// API: Verified Public Services endpoint
+// API: Verified Public Services endpoint with filtering
 app.get('/api/public-services', (req: Request, res: Response) => {
-  res.json({ services: VERIFIED_PUBLIC_SERVICES, total: VERIFIED_PUBLIC_SERVICES.length });
+  const { category, govLevel, search, status } = req.query;
+  let results = [...VERIFIED_PUBLIC_SERVICES];
+
+  if (category && typeof category === 'string' && category !== 'all') {
+    results = results.filter(s => s.category === category);
+  }
+  if (govLevel && typeof govLevel === 'string' && govLevel !== 'all') {
+    results = results.filter(s => s.govLevel === govLevel);
+  }
+  if (status && typeof status === 'string' && status !== 'all') {
+    results = results.filter(s => s.status === status);
+  }
+  if (search && typeof search === 'string' && search.trim()) {
+    const q = search.trim().toLowerCase();
+    results = results.filter(s => {
+      return (
+        s.name.toLowerCase().includes(q) ||
+        s.teName.toLowerCase().includes(q) ||
+        s.department.toLowerCase().includes(q) ||
+        (s.teDepartment && s.teDepartment.toLowerCase().includes(q)) ||
+        s.purpose.toLowerCase().includes(q) ||
+        s.tePurpose.toLowerCase().includes(q) ||
+        s.category.toLowerCase().includes(q)
+      );
+    });
+  }
+
+  res.json({ services: results, total: results.length });
+});
+
+// API: Public Services Audit Report endpoint
+app.get('/api/public-services/audit-report', (req: Request, res: Response) => {
+  const verifiedCount = VERIFIED_PUBLIC_SERVICES.filter(s => s.status === 'VERIFIED').length;
+  const updatedCount = VERIFIED_PUBLIC_SERVICES.filter(s => s.status === 'UPDATED').length;
+  const tempUnavailableCount = VERIFIED_PUBLIC_SERVICES.filter(s => s.status === 'TEMPORARILY_UNAVAILABLE').length;
+
+  res.json({
+    auditGeneratedAt: new Date().toISOString(),
+    auditPolicy: 'Authoritative Official Public Services Verification Standards',
+    summary: {
+      totalActiveServices: VERIFIED_PUBLIC_SERVICES.length,
+      verifiedCount,
+      updatedCount,
+      tempUnavailableCount,
+      archivedHistoricalCount: ARCHIVED_HISTORICAL_PUBLIC_SERVICES.length,
+      apStateServicesCount: VERIFIED_PUBLIC_SERVICES.filter(s => s.govLevel === 'state').length,
+      centralGovServicesCount: VERIFIED_PUBLIC_SERVICES.filter(s => s.govLevel === 'central').length,
+    },
+    services: VERIFIED_PUBLIC_SERVICES.map(s => ({
+      id: s.id,
+      name: s.name,
+      category: s.category,
+      govLevel: s.govLevel,
+      department: s.department,
+      status: s.status,
+      lastVerifiedDate: s.lastVerifiedDate,
+      verificationSource: s.verificationSource,
+      officialInfoUrl: s.officialInfoUrl,
+      officialApplicationUrl: s.officialApplicationUrl,
+      isHttps: s.officialApplicationUrl.startsWith('https://')
+    })),
+    archivedRecords: ARCHIVED_HISTORICAL_PUBLIC_SERVICES.map(a => ({
+      id: a.id,
+      name: a.name,
+      archiveReason: a.archiveReason,
+      archivedDate: a.archivedDate,
+      supersededBy: a.supersededByServiceId
+    }))
+  });
+});
+
+// API: Secure URL Verifier endpoint (with SSRF Guard & Rate-Limiting)
+app.post('/api/public-services/verify-url', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'URL string is required' });
+    }
+
+    const check = isSafePublicUrl(url);
+    if (!check.safe) {
+      return res.status(400).json({
+        error: 'URL blocked by security firewall',
+        reason: check.reason,
+        isAllowed: false
+      });
+    }
+
+    const result = await verifyServiceUrl(url);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Verification failed', details: err?.message });
+  }
 });
 
 // API: Authoritative system aggregates (Genuine verified catalog metadata)
 app.get('/api/system-stats', (req: Request, res: Response) => {
+  const publicSchemes = filterPublicSchemes(VERIFIED_SCHEMES);
   res.json({
-    publishedSchemesCount: VERIFIED_SCHEMES.length,
+    publishedSchemesCount: publicSchemes.length,
+    archivedHistoricalSchemesCount: ARCHIVED_HISTORICAL_SCHEMES.length,
     publicServicesCount: VERIFIED_PUBLIC_SERVICES.length,
-    verifiedStateProgramsCount: VERIFIED_SCHEMES.filter(s => s.govLevel === 'state').length,
-    verifiedCentralProgramsCount: VERIFIED_SCHEMES.filter(s => s.govLevel === 'central').length,
-    lastCatalogAuditDate: '2026-10-13T06:00:00Z',
-    auditStatus: 'VERIFIED_OFFICIAL_CATALOG',
-    dataIntegrity: 'AUTHORITATIVE_NO_FABRICATION'
+    archivedPublicServicesCount: ARCHIVED_HISTORICAL_PUBLIC_SERVICES.length,
+    verifiedStateProgramsCount: publicSchemes.filter(s => s.govLevel === 'state').length,
+    verifiedCentralProgramsCount: publicSchemes.filter(s => s.govLevel === 'central').length,
+    lastCatalogAuditDate: '2026-10-15T00:00:00Z',
+    auditStatus: 'VERIFIED_OFFICIAL_CATALOG_CLEANED',
+    dataIntegrity: 'AUTHORITATIVE_NO_FABRICATION_EXCLUDED_PREVIOUS_BRANDING'
   });
 });
+
+// API: Administrative audit endpoint for archived historical schemes
+app.get('/api/admin/archived-schemes', (req: Request, res: Response) => {
+  res.json({
+    archivedSchemes: ARCHIVED_HISTORICAL_SCHEMES,
+    total: ARCHIVED_HISTORICAL_SCHEMES.length,
+    archivePolicy: 'Historical records preserved for administrative audit and data continuity; strictly excluded from public directory.'
+  });
+});
+
+// API: Administrative audit endpoint for archived public services
+app.get('/api/admin/archived-public-services', (req: Request, res: Response) => {
+  res.json({
+    archivedServices: ARCHIVED_HISTORICAL_PUBLIC_SERVICES,
+    total: ARCHIVED_HISTORICAL_PUBLIC_SERVICES.length,
+    archivePolicy: 'Historical public service records preserved for administrative audit; excluded from active citizen directory.'
+  });
+});
+
 
 // API: Gemini Chat Assistant with RAG grounding
 app.post('/api/chat', async (req: Request, res: Response) => {
@@ -93,8 +239,9 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     const detectedLang = detected.detectedLang; // 'te' | 'en' | 'te-mixed' | 'hi'
     const responseLanguageCode = detected.languageCode; // 'te' | 'en' | 'hi'
 
-    // Build RAG Grounding Context from verified database
-    const schemesContext = VERIFIED_SCHEMES.map(s => `
+    // Build RAG Grounding Context strictly from cleaned public database
+    const publicSchemes = filterPublicSchemes(VERIFIED_SCHEMES);
+    const schemesContext = publicSchemes.map(s => `
 [SCHEME ID: ${s.id}]
 Official Name: ${s.officialName}
 Telugu Name: ${s.teName}
@@ -122,12 +269,19 @@ Helpline: ${s.verifiedHelpline || '1902'}
 Name: ${p.name}
 Telugu Name: ${p.teName}
 Category: ${p.category}
-Official Fee: ${p.officialFee}
+Government Level: ${p.govLevel === 'state' ? 'Andhra Pradesh State Government' : 'Central Government'}
+Department: ${p.department}
+Official Info URL: ${p.officialInfoUrl}
+Official Application Portal: ${p.officialApplicationUrl}
+Status: ${p.status}
+Last Verified Date: ${p.lastVerifiedDate}
+Verification Source: ${p.verificationSource}
+Official Statutory Fee: ${p.officialFee}
 Processing Time: ${p.processingTime}
-Official Portal: ${p.officialPortal}
-Documents: ${p.requiredDocuments.join(', ')}
-Steps: ${p.steps.join(' -> ')}
-Helpline: ${p.supportHelpline || 'N/A'}
+Eligibility: ${p.eligibility}
+Required Documents: ${p.requiredDocuments.join(', ')}
+Application Steps: ${p.steps.join(' -> ')}
+Helpline: ${p.supportHelpline || '1902'}
 `).join('\n---\n');
 
     const profileContext = citizenProfile ? `
@@ -149,12 +303,12 @@ CITIZEN PROFILE:
     if (detectedLang === 'en') {
       languageInstruction = `The citizen asked this query in ENGLISH ("${message}").
 - You MUST formulate your entire conversational response in clear, simple, respectful ENGLISH.
-- Mention the Telugu name in parentheses alongside the official English name (e.g., "**Jagananna Vidya Deevena** (జగనన్న విద్యా దీవెన)"), but write all explanations, eligibility rules, and instructions in ENGLISH.
+- Mention the Telugu name in parentheses alongside the official English name (e.g., "**Talliki Vandanam** (తల్లికి వందనం)"), but write all explanations, eligibility rules, and instructions in ENGLISH.
 - Even if previous messages in the conversation history were in Telugu or another language, the citizen's LATEST message is in English, so you MUST respond in ENGLISH.`;
     } else if (detectedLang === 'te') {
       languageInstruction = `The citizen asked this query in TELUGU SCRIPT ("${message}").
 - You MUST formulate your entire response in authentic, polite, and natural TELUGU (గౌరవప్రదమైన సహజ తెలుగు).
-- Keep official scheme titles recognizable (e.g., "**జగనన్న విద్యా దీవెన** (Jagananna Vidya Deevena)").
+- Keep official scheme titles recognizable (e.g., "**అన్నదాత సుఖీభవ** (Annadata Sukhibhava)").
 - Even if previous messages in the conversation history were in English, the citizen's LATEST message is in Telugu, so you MUST respond in TELUGU.`;
     } else if (detectedLang === 'te-mixed') {
       languageInstruction = `The citizen asked this query in TELUGU-ENGLISH MIXED / CODE-SWITCHED format ("${message}").
@@ -175,7 +329,7 @@ ROLE & BEHAVIOR:
    - For follow-up questions, always switch to the language of the latest user query, even if earlier messages used a different language.
 
 2. TRUTHFULNESS & GROUNDING: Ground your recommendations STRICTLY in the verified government schemes and public digital services provided below. NEVER invent schemes, eligibility criteria, phone numbers, or official links.
-3. PRESERVE ACCURATE NAMES & OFFICIAL URLS: Keep government scheme names (e.g., 'Jagananna Vidya Deevena', 'YSR Rythu Bharosa'), official departments, official documents, and official portal URLs (e.g., 'https://jnanabhumi.ap.gov.in', 'https://pmkisan.gov.in', 'https://uidai.gov.in') strictly accurate. Never translate or alter official website URLs.
+3. PRESERVE ACCURATE NAMES & OFFICIAL URLS: Keep government scheme names (e.g., 'Talliki Vandanam', 'Annadata Sukhibhava', 'Dr. NTR Vaidya Seva', 'NTR Bharosa'), official departments, official documents, and official portal URLs (e.g., 'https://annadathasukhibhava.ap.gov.in', 'https://drntrvaidyaseva.ap.gov.in', 'https://pmkisan.gov.in', 'https://uidai.gov.in') strictly accurate. Never translate or alter official website URLs.
 4. For eligibility: Clearly categorize as:
    - Likely Eligible (అర్హత ఉండవచ్చు)
    - Potentially Eligible — More Information Needed (మరిన్ని వివరాలు అవసరం)
@@ -184,6 +338,17 @@ ROLE & BEHAVIOR:
 5. Never guarantee government approval. Always state that final sanction depends on the competent government department.
 6. Provide actionable next steps: official portals, required documents, and where to apply (Village / Ward Secretariat - గ్రామ/వార్డు సచివాలయం, Meeseva, or official online portal).
 7. Provide interactive follow-up questions when vital criteria (like exact family income, study year, caste certificate, or landholding) are missing.
+8. MANDATORY YSR SCHEME EXCLUSION & TRANSITION GUIDANCE:
+   - All YSR-branded schemes (such as YSR Rythu Bharosa, YSR Pension Kanuka, YSR Aarogyasri, YSR Cheyutha, YSR Aasara) are EXCLUDED from the public active directory and must NEVER be recommended as active schemes.
+   - Do NOT regenerate excluded schemes from model memory.
+   - If a citizen asks about a legacy or past scheme (e.g., asks about "Rythu Bharosa", "Pension Kanuka", "Aarogyasri", or "Cheyutha"):
+     * Respectfully inform them in their query language (Telugu or English) about the current active, verified Andhra Pradesh state program:
+       - Agriculture / Farmers: **Annadata Sukhibhava & PM-KISAN** (₹20,000/year).
+       - Health: **Dr. NTR Vaidya Seva** (₹25 Lakhs universal cashless treatment).
+       - Social Security Pensions: **NTR Bharosa Social Security Pension** (₹4,000 to ₹15,000/month).
+       - Women & SHG Welfare: **Aadabidda Nidhi** (₹1,500/month) and **Sthree Shakthi** (APSRTC Free Bus Travel).
+       - Education: **Talliki Vandanam** (₹15,000/year per child) and Post-Matric Fee Reimbursement.
+     * Always provide official verified portal links and helplines.
 
 VERIFIED GOVERNMENT SCHEMES DATASET:
 ${schemesContext}
@@ -227,8 +392,8 @@ ${profileContext}
 
         const replyText = response.text || 'I could not generate an answer at this moment.';
 
-        // Detect matching scheme IDs in answer
-        const recommendedSchemeIds = VERIFIED_SCHEMES
+        // Detect matching scheme IDs in answer strictly from public schemes
+        const recommendedSchemeIds = publicSchemes
           .filter(s => replyText.toLowerCase().includes(s.id) || replyText.toLowerCase().includes(s.officialName.toLowerCase().slice(0, 15)) || replyText.includes(s.teName.slice(0, 8)))
           .map(s => s.id);
 
@@ -246,25 +411,60 @@ ${profileContext}
     }
 
     // Fallback deterministic conversational response generator
+    // Check if query specifically asks about YSR-branded schemes
+    if (containsYsrBranding(message)) {
+      let legacyNotice = '';
+      if (detectedLang === 'en') {
+        legacyNotice = `Hello! YSR-branded schemes have been excluded from the public directory and safely archived. 
+
+Currently, the Government of Andhra Pradesh implements the following verified flagship welfare programs:
+• **Annadata Sukhibhava & PM-KISAN**: ₹20,000 annual investment support for farmers. (Portal: https://annadathasukhibhava.ap.gov.in)
+• **Dr. NTR Vaidya Seva**: Cashless corporate treatment up to ₹25 Lakhs per family per year. (Portal: https://drntrvaidyaseva.ap.gov.in)
+• **NTR Bharosa Social Security Pension**: ₹4,000/month for elderly & widows, up to ₹15,000/month for severe disability. (Portal: https://sspensions.ap.gov.in)
+• **Aadabidda Nidhi Scheme**: ₹1,500 monthly financial aid for women aged 18-59. (Portal: https://wdcw.ap.gov.in)
+• **APSRTC Sthree Shakthi**: 100% free bus travel for women across Andhra Pradesh. (Portal: https://apsrtc.ap.gov.in)
+• **Talliki Vandanam**: ₹15,000/year for mothers sending children to school. (Portal: https://gramawardsachivalayam.ap.gov.in)
+
+Which of these current programs would you like guidance on?`;
+      } else {
+        legacyNotice = `నమస్కారం! వైఎస్సార్ బ్రాండెడ్ పథకాలు ప్రజా కేటలాగ్ నుండి తొలగించబడి ఆర్కైవ్ చేయబడ్డాయి.
+
+ప్రస్తుతం ఆంధ్రప్రదేశ్ ప్రభుత్వం అధికారికంగా అమలు చేస్తున్న ప్రధాన సంక్షేమ పథకాలు:
+• **అన్నదాత సుఖీభవ మరియు పీఎం-కిసాన్**: రైతులకు ఏటా ₹20,000 పెట్టుబడి సాయం. (వెబ్‌సైట్: https://annadathasukhibhava.ap.gov.in)
+• **డా. ఎన్టీఆర్ వైద్య సేవ**: పేద కుటుంబాలకు ₹25 లక్షల వరకు ఉచిత నగదు రహిత వైద్య చికిత్స. (వెబ్‌సైట్: https://drntrvaidyaseva.ap.gov.in)
+• **ఎన్టీఆర్ భరోసా సామాజిక పింఛను**: వృద్ధులు, వితంతువులకు నెలకు ₹4,000, దివ్యాంగులకు ₹6,000 నుండి ₹15,000. (వెబ్‌సైట్: https://sspensions.ap.gov.in)
+• **ఆడబిడ్డ నిధి పథకం**: 18 నుండి 59 ఏళ్ల మహిళలకు ప్రతి నెలా ₹1,500 ఆర్థిక సాయం. (వెబ్‌సైట్: https://wdcw.ap.gov.in)
+• **స్త్రీ శక్తి పథకం**: ఆర్టీసీ బస్సుల్లో మహిళలకు 100% ఉచిత ప్రయాణ సౌకర్యం. (వెబ్‌సైట్: https://apsrtc.ap.gov.in)
+• **తల్లికి వందనం**: బడికి వెళ్లే పిల్లల తల్లులకు ఏటా ₹15,000 ఆర్థిక ప్రోత్సాహకం.
+
+మీరు ఏ పథకం గురించి తెలుసుకోవాలనుకుంటున్నారో తెలియజేయండి.`;
+      }
+
+      return res.json({
+        reply: legacyNotice,
+        language: responseLanguageCode,
+        detectedLanguage: detectedLang,
+        isMixedLanguage: detected.isMixed,
+        recommendedSchemeIds: ['annadata-sukhibhava-ap', 'dr-ntr-vaidya-seva-ap', 'ntr-bharosa-pension-ap'],
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const msgLower = message.toLowerCase();
-    let matchedScheme = VERIFIED_SCHEMES.find(s =>
-      msgLower.includes(s.id) ||
-      msgLower.includes(s.officialName.toLowerCase()) ||
-      msgLower.includes('scholarship') ||
-      msgLower.includes('విద్యార్థి') ||
-      msgLower.includes('రైతు') ||
-      msgLower.includes('farmer') ||
-      msgLower.includes('pension') ||
-      msgLower.includes('పింఛన్') ||
-      msgLower.includes('deevena') ||
-      msgLower.includes('bharosa') ||
-      msgLower.includes('cheyutha') ||
-      msgLower.includes('aasara') ||
-      msgLower.includes('aarogyasri') ||
-      msgLower.includes('pan') ||
-      msgLower.includes('aadhaar') ||
-      msgLower.includes('ration')
-    ) || VERIFIED_SCHEMES[0];
+    let matchedScheme = publicSchemes.find(s => {
+      if (msgLower.includes(s.id)) return true;
+      if (msgLower.includes(s.officialName.toLowerCase())) return true;
+      if ((msgLower.includes('scholarship') || msgLower.includes('విద్యార్థి') || msgLower.includes('deevena')) && s.category === 'education') return true;
+      if ((msgLower.includes('రైతు') || msgLower.includes('farmer') || msgLower.includes('agriculture') || msgLower.includes('sukhibhava') || msgLower.includes('kisan')) && s.category === 'agriculture') return true;
+      if ((msgLower.includes('pension') || msgLower.includes('పింఛన్') || msgLower.includes('bharosa') || msgLower.includes('widow') || msgLower.includes('disability')) && s.category === 'pensions') return true;
+      if ((msgLower.includes('health') || msgLower.includes('వైద్యం') || msgLower.includes('aarogyasri') || msgLower.includes('vaidya') || msgLower.includes('ఆసుపత్రి')) && s.category === 'health') return true;
+      if ((msgLower.includes('women') || msgLower.includes('మహిళ') || msgLower.includes('డ్వాక్రా') || msgLower.includes('cheyutha') || msgLower.includes('aasara') || msgLower.includes('aadabidda')) && s.category === 'women_shg') return true;
+      if ((msgLower.includes('bus') || msgLower.includes('బస్సు') || msgLower.includes('free bus') || msgLower.includes('sthree shakthi')) && s.id === 'sthree-shakthi-free-bus-ap') return true;
+      if ((msgLower.includes('unemployment') || msgLower.includes('నిరుద్యోగ') || msgLower.includes('youth') || msgLower.includes('yuva galam')) && s.id === 'yuva-galam-unemployment-allowance-ap') return true;
+      if ((msgLower.includes('solar') || msgLower.includes('సౌర') || msgLower.includes('surya')) && s.id === 'pm-surya-ghar-muft-bijli') return true;
+      if ((msgLower.includes('gas') || msgLower.includes('గ్యాస్') || msgLower.includes('cylinder') || msgLower.includes('deepam')) && s.id === 'ap-deepam-free-lpg-scheme') return true;
+      return false;
+    }) || publicSchemes[0];
 
     let reply = '';
     if (detectedLang === 'en') {

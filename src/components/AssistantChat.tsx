@@ -26,6 +26,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSimpleMode } from '../context/SimpleModeContext';
 import { ChatMessage, Scheme } from '../types';
 import { VERIFIED_SCHEMES } from '../data/schemes';
+import { ChatMessageContent } from './ChatMessageContent';
 
 interface AssistantChatProps {
   onSelectScheme: (scheme: Scheme) => void;
@@ -62,13 +63,13 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     timestamp: new Date().toISOString(),
     suggestedPrompts: lang === 'te' ? [
       'నేను బి.టెక్ 2వ సంవత్సరం చదువుతున్నాను. నాకు ఏ స్కాలర్‌షిప్ వస్తుంది?',
-      'రైతు భరోసా & పీఎం కిసాన్ పథకానికి ఎవరు అర్హులు?',
-      'ఆరోగ్యశ్రీ కార్డు కింద ఎంతవరకు ఉచిత చికిత్స లభిస్తుంది?',
+      'అన్నదాత సుఖీభవ & పీఎం కిసాన్ పథకానికి ఎవరు అర్హులు?',
+      'ఎన్టీఆర్ వైద్య సేవ కింద ఎంతవరకు ఉచిత చికిత్స లభిస్తుంది?',
       'కొత్త రేషన్ కార్డు / రైస్ కార్డు దరఖాస్తు విధానం ఏమిటి?'
     ] : [
       'I am a 2nd year B.Tech student in AP. Which scholarships can I apply for?',
-      'Who is eligible for Rythu Bharosa & PM-KISAN?',
-      'How much free healthcare is covered under Dr. YSR Aarogyasri?',
+      'Who is eligible for Annadata Sukhibhava & PM-KISAN?',
+      'How much free healthcare is covered under Dr. NTR Vaidya Seva?',
       'How do I apply for a new Rice Card or Caste Certificate?'
     ],
     interactiveOptions: {
@@ -208,11 +209,11 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         timestamp: new Date().toISOString(),
         suggestedPrompts: currentLanguage === 'te' ? [
           'జగనన్న విద్యా దీవెన అర్హతలు',
-          'వైఎస్సార్ రైతు భరోసా తేదీలు',
+          'అన్నదాత సుఖీభవ & పీఎం కిసాన్ నిబంధనలు',
           'పీఎం సూర్య ఘర్ సోలార్ సబ్సిడీ'
         ] : [
-          'Jagananna Vidya Deevena criteria',
-          'YSR Rythu Bharosa disbursement',
+          'Post-Matric Scholarship criteria',
+          'Annadata Sukhibhava guidelines',
           'PM Surya Ghar rooftop solar subsidy'
         ]
       }
@@ -293,10 +294,8 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                       : 'bg-white text-[#242824] border border-[#E5E5DF] rounded-tl-xs'
                   }`}
                 >
-                  {/* Clean message text formatted with line breaks */}
-                  <div className="whitespace-pre-line space-y-2 font-normal">
-                    {msg.content}
-                  </div>
+                  {/* Render message with robust Markdown formatting & safe link guards */}
+                  <ChatMessageContent content={msg.content} isUser={isUser} />
 
                   {/* Scheme Cards for recommendations */}
                   {msg.recommendedSchemeIds && msg.recommendedSchemeIds.length > 0 && (

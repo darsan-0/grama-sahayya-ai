@@ -90,7 +90,7 @@ export const FeedbackSupportView: React.FC = () => {
           </div>
           <div className="bg-white/10 p-4 rounded-xl border border-white/10">
             <div className="text-gold font-bold text-base">104</div>
-            <div className="font-medium text-white mt-1">{isTe ? 'డా. వైఎస్సార్ ఆరోగ్యశ్రీ' : 'Dr. YSR Aarogyasri Trust'}</div>
+            <div className="font-medium text-white mt-1">{isTe ? 'డా. ఎన్టీఆర్ వైద్య సేవ' : 'Dr. NTR Vaidya Seva Trust'}</div>
             <div className="text-[11px] text-white/70 mt-0.5">Free Medical Treatment Helpline</div>
           </div>
           <div className="bg-white/10 p-4 rounded-xl border border-white/10">

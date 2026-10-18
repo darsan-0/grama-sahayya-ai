@@ -86,23 +86,23 @@ const outOfStateStudent: Partial<UserProfile> = {
 const resultC = evaluateSchemeEligibility(vidyaDeevena, outOfStateStudent);
 assert(resultC.status === 'likely_ineligible', 'Non-AP resident evaluates as likely_ineligible for state scheme');
 
-// Case D: Farmer Welfare (Rythu Bharosa)
-const rythuBharosa = VERIFIED_SCHEMES.find(s => s.id === 'ysr-rythu-bharosa-pm-kisan')!;
+// Case D: Farmer Welfare (Annadata Sukhibhava & PM-KISAN)
+const annadataSukhibhava = VERIFIED_SCHEMES.find(s => s.id === 'annadata-sukhibhava-ap')!;
 const farmerProfile: Partial<UserProfile> = {
   state: 'Andhra Pradesh',
   age: 45,
   isFarmer: true
 };
-const resultFarmer = evaluateSchemeEligibility(rythuBharosa, farmerProfile);
-assert(resultFarmer.status === 'likely_eligible', 'AP cultivator evaluates as likely_eligible for Rythu Bharosa');
+const resultFarmer = evaluateSchemeEligibility(annadataSukhibhava, farmerProfile);
+assert(resultFarmer.status === 'likely_eligible', 'AP cultivator evaluates as likely_eligible for farmer welfare scheme');
 
 const nonFarmerProfile: Partial<UserProfile> = {
   state: 'Andhra Pradesh',
   age: 45,
   isFarmer: false
 };
-const resultNonFarmer = evaluateSchemeEligibility(rythuBharosa, nonFarmerProfile);
-assert(resultNonFarmer.status === 'likely_ineligible', 'Non-farmer evaluates as likely_ineligible for Rythu Bharosa');
+const resultNonFarmer = evaluateSchemeEligibility(annadataSukhibhava, nonFarmerProfile);
+assert(resultNonFarmer.status === 'likely_ineligible', 'Non-farmer evaluates as likely_ineligible for farmer welfare scheme');
 
 // 6. Null Profile / Potentially Eligible Test
 const resultNull = evaluateSchemeEligibility(vidyaDeevena, null);

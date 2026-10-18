@@ -142,6 +142,10 @@
         "officialSubmissionReference": { "type": "string", "maxLength": 128 },
         "verifiedOutcomeNotes": { "type": "string", "maxLength": 2000 },
         "notes": { "type": "string", "maxLength": 2000 },
+        "currentStep": { "type": "number" },
+        "savedAtIso": { "type": "string", "format": "date-time" },
+        "lastUpdatedAtIso": { "type": "string", "format": "date-time" },
+        "reportedSubmittedAt": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

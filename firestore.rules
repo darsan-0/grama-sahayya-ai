@@ -94,7 +94,8 @@ service cloud.firestore {
     }
 
     function isValidSession(data) {
-      return data.sessionId is string && data.sessionId.size() <= 128
+      return (('sessionId' in data && data.sessionId is string && data.sessionId.size() <= 128) ||
+              ('id' in data && data.id is string && data.id.size() <= 128))
         && data.userId is string && data.userId.size() <= 128
         && data.schemeId is string && data.schemeId.size() <= 128;
     }
@@ -152,6 +153,12 @@ service cloud.firestore {
       allow create, update, delete: if isSchemeReviewer() && isValidScheme(incoming());
     }
 
+    // 2b. Archived Historical Schemes (Strictly restricted to Admin audit; blocked from public)
+    match /archivedSchemes/{schemeId} {
+      allow read, list: if isAdmin();
+      allow write: if isSuperAdmin();
+    }
+
     // 3. Public Digital Services (Guidance)
     match /publicServices/{serviceId} {
       allow get, list: if true;
@@ -180,10 +187,10 @@ service cloud.firestore {
 
     // 5. Guided Assistance Sessions
     match /assistanceSessions/{sessionId} {
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isSupportStaff());
+      allow get: if isSignedIn() && isValidId(sessionId) && (resource.data.userId == request.auth.uid || isSupportStaff());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isSupportStaff());
-      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidSession(incoming());
-      allow update: if isSignedIn() && (
+      allow create: if isSignedIn() && isValidId(sessionId) && incoming().userId == request.auth.uid && isValidSession(incoming());
+      allow update: if isSignedIn() && isValidId(sessionId) && (
         (resource.data.userId == request.auth.uid && incoming().userId == existing().userId
           && isValidSession(incoming())
           && (
@@ -193,15 +200,15 @@ service cloud.firestore {
           )
         ) || isSupportStaff()
       );
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      allow delete: if isSignedIn() && isValidId(sessionId) && (resource.data.userId == request.auth.uid || isSuperAdmin());
     }
 
     // 6. Real Scheme Applications (Auditable Journey)
     match /schemeApplications/{applicationId} {
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && isValidId(applicationId) && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidSchemeApplication(incoming());
-      allow update: if isSignedIn() && (
+      allow create: if isSignedIn() && isValidId(applicationId) && incoming().userId == request.auth.uid && isValidSchemeApplication(incoming());
+      allow update: if isSignedIn() && isValidId(applicationId) && (
         // Citizen can update their own application progress up to self-reported submission
         (resource.data.userId == request.auth.uid && incoming().userId == existing().userId
           && isValidSchemeApplication(incoming())
@@ -212,7 +219,7 @@ service cloud.firestore {
           )
         ) || isSuperAdmin() || isSupportStaff()
       );
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin() && isValidId(applicationId);
     }
 
     // 7. Application Status Events (Audit History)
