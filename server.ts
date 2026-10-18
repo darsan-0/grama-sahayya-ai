@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { VERIFIED_SCHEMES } from './src/data/schemes.ts';
@@ -44,6 +45,63 @@ app.get('/api/health', (req: Request, res: Response) => {
     schemesCount: publicSchemes.length,
     archivedHistoricalSchemesCount: ARCHIVED_HISTORICAL_SCHEMES.length,
     publicServicesCount: VERIFIED_PUBLIC_SERVICES.length,
+  });
+});
+
+// Digital Asset Links for Android TWA ownership verification
+app.get('/.well-known/assetlinks.json', (req: Request, res: Response) => {
+  const assetlinksPath = path.resolve(__dirname, 'public', '.well-known', 'assetlinks.json');
+  if (fs.existsSync(assetlinksPath)) {
+    res.setHeader('Content-Type', 'application/json');
+    return res.sendFile(assetlinksPath);
+  }
+  res.status(404).json({ error: 'assetlinks.json not found' });
+});
+
+// Real Signed Android APK direct download
+app.get('/downloads/grama-sahayya-ai.apk', (req: Request, res: Response) => {
+  const publicApkPath = path.resolve(__dirname, 'public', 'downloads', 'grama-sahayya-ai.apk');
+  const distApkPath = path.resolve(__dirname, 'dist', 'downloads', 'grama-sahayya-ai.apk');
+  const targetPath = fs.existsSync(publicApkPath) ? publicApkPath : (fs.existsSync(distApkPath) ? distApkPath : null);
+
+  if (!targetPath) {
+    return res.status(404).json({
+      error: 'APK build is not yet published',
+      status: 'pending_build'
+    });
+  }
+
+  res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+  res.setHeader('Content-Disposition', 'attachment; filename="grama-sahayya-ai.apk"');
+  res.sendFile(targetPath);
+});
+
+// App Info and verified download availability endpoint
+app.get('/api/app-info', (req: Request, res: Response) => {
+  const publicApkPath = path.resolve(__dirname, 'public', 'downloads', 'grama-sahayya-ai.apk');
+  const distApkPath = path.resolve(__dirname, 'dist', 'downloads', 'grama-sahayya-ai.apk');
+  const targetPath = fs.existsSync(publicApkPath) ? publicApkPath : (fs.existsSync(distApkPath) ? distApkPath : null);
+
+  const isAvailable = !!targetPath;
+  let fileSize = 0;
+  if (targetPath) {
+    try {
+      fileSize = fs.statSync(targetPath).size;
+    } catch {
+      fileSize = 0;
+    }
+  }
+
+  res.json({
+    appName: 'Grama Sahayya AI',
+    packageId: 'ai.gramasahayya.app',
+    version: '1.0.0',
+    versionCode: 2,
+    apkAvailable: isAvailable,
+    downloadUrl: isAvailable ? '/downloads/grama-sahayya-ai.apk' : null,
+    fileSize,
+    sha256Fingerprint: '22:80:84:DD:85:58:26:B5:E1:46:A5:AF:51:A4:D8:56:77:7E:71:82:CE:68:90:1E:E6:61:7D:74:C3:A3:A8:FC',
+    digitalAssetLinksUrl: '/.well-known/assetlinks.json'
   });
 });
 
@@ -552,7 +610,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     // Serve static files from dist
-    app.use(express.static(path.resolve(__dirname, 'dist')));
+    app.use(express.static(path.resolve(__dirname, 'dist'), { dotfiles: 'allow' }));
     app.get('*', (req: Request, res: Response) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });

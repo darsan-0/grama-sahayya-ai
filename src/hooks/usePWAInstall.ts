@@ -12,6 +12,10 @@ export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
   const [isIOS, setIsIOS] = useState<boolean>(false);
+  const [isAndroid, setIsAndroid] = useState<boolean>(false);
+  const [apkAvailable, setApkAvailable] = useState<boolean>(false);
+  const [apkDownloadUrl, setApkDownloadUrl] = useState<string>('/downloads/grama-sahayya-ai.apk');
+  const [apkFileSize, setApkFileSize] = useState<number>(0);
   const [isDismissed, setIsDismissed] = useState<boolean>(true);
   const [hasEngaged, setHasEngaged] = useState<boolean>(false);
   const [manuallyOpened, setManuallyOpened] = useState<boolean>(false);
@@ -26,12 +30,33 @@ export function usePWAInstall() {
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);
 
-    // 2. Check iOS Safari
+    // 2. Check Device OS
     const ua = window.navigator.userAgent.toLowerCase();
     const isIOSDevice = /iphone|ipad|ipod/.test(ua) && !isStandalone;
+    const isAndroidDevice = /android/i.test(ua) && !isStandalone;
     setIsIOS(isIOSDevice);
+    setIsAndroid(isAndroidDevice);
 
-    // 3. Check dismissal expiry
+    // 3. Verify real signed APK availability from backend
+    fetch('/api/app-info')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.apkAvailable && data.downloadUrl) {
+          setApkAvailable(true);
+          setApkDownloadUrl(data.downloadUrl);
+          if (data.fileSize) setApkFileSize(data.fileSize);
+        }
+      })
+      .catch(() => {
+        // Fallback: direct HEAD check on standard APK path
+        fetch('/downloads/grama-sahayya-ai.apk', { method: 'HEAD' })
+          .then(res => {
+            if (res.ok) setApkAvailable(true);
+          })
+          .catch(() => setApkAvailable(false));
+      });
+
+    // 4. Check dismissal expiry
     const dismissedUntil = localStorage.getItem(DISMISSAL_STORAGE_KEY);
     if (dismissedUntil) {
       const expiry = parseInt(dismissedUntil, 10);
@@ -45,7 +70,7 @@ export function usePWAInstall() {
       setIsDismissed(false);
     }
 
-    // 4. Polite engagement timer (appears after 2.5 seconds or subtle interaction)
+    // 5. Polite engagement timer (appears after 2.5 seconds or subtle interaction)
     const timer = setTimeout(() => {
       setHasEngaged(true);
     }, 2500);
@@ -121,6 +146,18 @@ export function usePWAInstall() {
     }
   }, [deferredPrompt]);
 
+  // Download real signed APK
+  const downloadApk = useCallback(() => {
+    if (typeof window !== 'undefined' && apkDownloadUrl) {
+      const link = document.createElement('a');
+      link.href = apkDownloadUrl;
+      link.setAttribute('download', 'grama-sahayya-ai.apk');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }, [apkDownloadUrl]);
+
   // Dismiss popup and suppress for N days
   const dismiss = useCallback((days: number = DEFAULT_DISMISSAL_DAYS) => {
     setIsDismissed(true);
@@ -142,10 +179,15 @@ export function usePWAInstall() {
     isInstallable: !!deferredPrompt,
     isInstalled,
     isIOS,
+    isAndroid,
+    apkAvailable,
+    apkDownloadUrl,
+    apkFileSize,
     isDismissed,
     hasEngaged,
     manuallyOpened,
     install,
+    downloadApk,
     dismiss,
     openPrompt,
     shouldShowPopup: !isInstalled && ((!isDismissed && hasEngaged) || manuallyOpened)

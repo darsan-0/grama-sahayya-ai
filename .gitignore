@@ -1,6 +1,7 @@
 node_modules/
 build/
 dist/
+dev-dist/
 server.js
 coverage/
 .DS_Store

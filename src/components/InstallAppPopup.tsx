@@ -1,14 +1,28 @@
 import React, { useState } from 'react';
-import { Download, X, Share, Monitor, Check } from 'lucide-react';
+import { Download, X, Share, Monitor, Check, Smartphone, Info } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { useLanguage } from '../context/LanguageContext';
 
 export const InstallAppPopup: React.FC = () => {
-  const { isInstallable, isInstalled, isIOS, shouldShowPopup, install, dismiss } = usePWAInstall();
+  const {
+    isInstallable,
+    isInstalled,
+    isIOS,
+    isAndroid,
+    apkAvailable,
+    apkDownloadUrl,
+    apkFileSize,
+    shouldShowPopup,
+    install,
+    downloadApk,
+    dismiss
+  } = usePWAInstall();
+
   const { currentLanguage } = useLanguage();
   const [showInstructions, setShowInstructions] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [installedSuccess, setInstalledSuccess] = useState(false);
+  const [apkDownloaded, setApkDownloaded] = useState(false);
 
   const isTe = currentLanguage === 'te';
 
@@ -18,6 +32,31 @@ export const InstallAppPopup: React.FC = () => {
   }
 
   const handleInstallClick = async () => {
+    // If user is on Android and verified APK is ready, open installation / download panel
+    if (isAndroid) {
+      if (apkAvailable) {
+        setShowInstructions(true);
+      } else if (isInstallable) {
+        setInstalling(true);
+        try {
+          const res = await install();
+          if (res === 'accepted') {
+            setInstalledSuccess(true);
+            setTimeout(() => dismiss(), 2000);
+          } else {
+            setShowInstructions(true);
+          }
+        } catch {
+          setShowInstructions(true);
+        } finally {
+          setInstalling(false);
+        }
+      } else {
+        setShowInstructions(true);
+      }
+      return;
+    }
+
     if (isInstallable) {
       setInstalling(true);
       try {
@@ -40,6 +79,16 @@ export const InstallAppPopup: React.FC = () => {
     }
   };
 
+  const handleDirectApkDownload = () => {
+    if (!apkAvailable) return;
+    setApkDownloaded(true);
+    downloadApk();
+  };
+
+  const formattedFileSize = apkFileSize > 0
+    ? `${(apkFileSize / (1024 * 1024)).toFixed(1)} MB`
+    : '~1.0 MB';
+
   return (
     <aside
       role="region"
@@ -51,19 +100,24 @@ export const InstallAppPopup: React.FC = () => {
       }}
     >
       <div className="relative">
-        {/* Concise Tooltip when browser requires manual Add to Home Screen / Address Bar install */}
+        {/* Concise Tooltip when browser requires manual Add to Home Screen, Android APK, or Address Bar install */}
         {showInstructions && (
           <div
-            className="absolute bottom-full mb-2 right-0 w-[250px] sm:w-[270px] p-2.5 rounded-xl border border-white/80 shadow-[0_6px_20px_rgba(0,0,0,0.1)] text-[#242824] animate-in fade-in zoom-in-95 duration-150"
+            className="absolute bottom-full mb-2 right-0 w-[250px] sm:w-[270px] p-3 rounded-xl border border-white/80 shadow-[0_6px_24px_rgba(0,0,0,0.12)] text-[#242824] animate-in fade-in zoom-in-95 duration-150"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.92)',
+              backgroundColor: 'rgba(255, 255, 255, 0.94)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)'
             }}
           >
-            <div className="flex items-center justify-between pb-1 mb-1 border-b border-[#E5E5DF]/60">
+            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#E5E5DF]/70">
               <span className="text-[11px] font-semibold text-[#075B46] flex items-center gap-1">
-                {isIOS ? (
+                {isAndroid ? (
+                  <>
+                    <Smartphone className="w-3.5 h-3.5 text-[#075B46]" />
+                    <span>{isTe ? 'ఆండ్రాయిడ్ ఇన్‌స్టాలేషన్' : 'Android App Installation'}</span>
+                  </>
+                ) : isIOS ? (
                   <>
                     <Share className="w-3 h-3 text-[#075B46]" />
                     <span>{isTe ? 'హోమ్ స్క్రీన్‌కు చేర్చండి:' : 'Add to Home Screen:'}</span>
@@ -84,15 +138,105 @@ export const InstallAppPopup: React.FC = () => {
                 <X className="w-3 h-3" />
               </button>
             </div>
-            <p className="text-[10px] text-[#555953] leading-snug">
-              {isIOS
-                ? isTe
-                  ? 'Safari లో Share (⎋) ఐకాన్ నొక్కి, "Add to Home Screen" ను ఎంచుకోండి.'
-                  : 'Tap Safari Share (⎋) icon, then tap "Add to Home Screen".'
-                : isTe
-                  ? 'అడ్రస్ బార్‌లోని (⊕) గుర్తు లేదా మెనూ (⋮) నొక్కి "Install" ఎంచుకోండి.'
-                  : 'Click the install icon (⊕) in address bar, or menu (⋮) → "Install app".'}
-            </p>
+
+            {/* Android specific flow: verified APK download & unknown apps permission guidance */}
+            {isAndroid ? (
+              <div className="space-y-2 text-[10px] text-[#555953] leading-snug">
+                {apkAvailable ? (
+                  <>
+                    <div className="flex flex-col gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleDirectApkDownload}
+                        className="w-full h-[30px] rounded-[9px] bg-[#075B46] hover:bg-[#064B3A] text-white font-medium text-[11px] flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>{isTe ? 'ఆండ్రాయిడ్ APK డౌన్‌లోడ్' : 'Download Android APK'}</span>
+                        <span className="text-[9px] opacity-80 font-normal">({formattedFileSize})</span>
+                      </button>
+
+                      {isInstallable && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setInstalling(true);
+                            try {
+                              const res = await install();
+                              if (res === 'accepted') {
+                                setInstalledSuccess(true);
+                                setTimeout(() => dismiss(), 2000);
+                              }
+                            } finally {
+                              setInstalling(false);
+                            }
+                          }}
+                          className="w-full h-[26px] rounded-[8px] border border-[#075B46]/30 text-[#075B46] hover:bg-[#075B46]/5 font-medium text-[10px] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Monitor className="w-3 h-3" />
+                          <span>{isTe ? 'లేదా బ్రౌజర్ వెబ్ యాప్‌గా వాడండి' : 'Or install as Web App (PWA)'}</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="pt-1 border-t border-[#E5E5DF]/60 space-y-1">
+                      <div className="flex items-center gap-1 text-[10px] font-semibold text-[#242824]">
+                        <Info className="w-3 h-3 text-[#E6B84A] shrink-0" />
+                        <span>{isTe ? 'ఇన్‌స్టాలేషన్ సూచనలు:' : 'Installation Steps:'}</span>
+                      </div>
+                      <ol className="list-decimal pl-3.5 space-y-0.5 text-[9.5px] text-[#555953]">
+                        <li>{isTe ? 'డౌన్‌లోడ్ అయిన APK ఫైల్‌ను తెరవండి.' : 'Open the downloaded APK file.'}</li>
+                        <li>{isTe ? 'అవసరమైతే సెట్టింగ్స్‌లో "Install unknown apps" అనుమతించండి.' : 'If prompted, enable "Install unknown apps" in Settings.'}</li>
+                        <li>{isTe ? '"Install" నొక్కి యాప్‌ను ప్రారంభించండి.' : 'Tap "Install" to complete setup.'}</li>
+                      </ol>
+                      <p className="text-[9px] text-[#8E918C] italic">
+                        {isTe
+                          ? '* ఆండ్రాయిడ్ భద్రత కొరకు యూజర్ అనుమతి తప్పనిసరి.'
+                          : '* Note: Android requires user confirmation to install standalone APKs.'}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] text-[#555953]">
+                      {isTe
+                        ? 'ఆండ్రాయిడ్ యాప్ త్వరలోనే విడుదల కానుంది. ప్రస్తుతం మీరు మీ బ్రౌజర్ మెనూ (⋮) నుండి "Install" లేదా "Add to Home screen" ఎంచుకోవచ్చు.'
+                        : 'Standalone APK is preparing for release. In the meantime, tap browser menu (⋮) → "Install app" or "Add to Home screen".'}
+                    </p>
+                    {isInstallable && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setInstalling(true);
+                          try {
+                            const res = await install();
+                            if (res === 'accepted') {
+                              setInstalledSuccess(true);
+                              setTimeout(() => dismiss(), 2000);
+                            }
+                          } finally {
+                            setInstalling(false);
+                          }
+                        }}
+                        className="w-full h-[28px] rounded-[8px] bg-[#075B46] text-white text-[11px] font-medium flex items-center justify-center gap-1"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>{isTe ? 'వెబ్ యాప్ ఇన్‌స్టాల్' : 'Install Web App'}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-[10px] text-[#555953] leading-snug">
+                {isIOS
+                  ? isTe
+                    ? 'Safari లో Share (⎋) ఐకాన్ నొక్కి, "Add to Home Screen" ను ఎంచుకోండి.'
+                    : 'Tap Safari Share (⎋) icon, then tap "Add to Home Screen".'
+                  : isTe
+                    ? 'అడ్రస్ బార్‌లోని (⊕) గుర్తు లేదా మెనూ (⋮) నొక్కి "Install" ఎంచుకోండి.'
+                    : 'Click the install icon (⊕) in address bar, or menu (⋮) → "Install app".'}
+              </p>
+            )}
           </div>
         )}
 
