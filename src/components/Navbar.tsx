@@ -100,9 +100,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-3 text-left focus:outline-none group cursor-pointer shrink-0"
             aria-label="Grama Sahayya AI Home"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#075B46] flex items-center justify-center text-white font-semibold text-sm sm:text-base tracking-tight shadow-xs transition-transform group-hover:scale-102">
-              GS
-            </div>
+            <img
+              src="/logo.png"
+              alt="Grama Sahayya AI"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-contain shadow-xs transition-transform group-hover:scale-105"
+            />
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-base sm:text-lg tracking-tight text-[#242824]">

@@ -260,9 +260,11 @@ function MainAppContent() {
             {/* Column 1: Brand & Mission */}
             <div className="space-y-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#075B46] text-white font-semibold flex items-center justify-center text-xs border border-[#16604D]">
-                  GS
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="Grama Sahayya AI"
+                  className="w-8 h-8 rounded-lg object-contain shadow-xs"
+                />
                 <span className="font-semibold text-base text-white">Grama Sahayya AI</span>
               </div>
               <p className="text-xs text-[#A3BDB3] leading-relaxed">

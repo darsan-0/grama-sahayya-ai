@@ -281,9 +281,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
         {/* Brand header */}
         <div className="text-center space-y-2 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-forest text-gold font-bold text-lg flex items-center justify-center mx-auto shadow-2xs">
-            GS
-          </div>
+          <img
+            src="/logo.png"
+            alt="Grama Sahayya AI"
+            className="w-14 h-14 rounded-2xl object-contain mx-auto shadow-xs"
+          />
           <h2 className="text-xl font-semibold tracking-tight text-charcoal">
             పౌరుల లాగిన్ / Sign In to Grama Sahayya
           </h2>

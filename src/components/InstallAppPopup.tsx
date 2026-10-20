@@ -259,33 +259,12 @@ export const InstallAppPopup: React.FC = () => {
             <X className="w-3 h-3" strokeWidth={2.5} />
           </button>
 
-          {/* Left: App Logo Emblem (34px rounded square in #075B46 with golden seedling) */}
-          <div className="w-[34px] h-[34px] rounded-[10px] bg-[#075B46] shrink-0 flex items-center justify-center shadow-xs overflow-hidden">
-            <svg
-              className="w-[20px] h-[20px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              {/* Golden seedling sprout */}
-              <path
-                d="M12 21V12.5"
-                stroke="#E6B84A"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M12 13.5C12 9.5 8.5 7 4 7C4 11.5 6.5 15.2 12 15.2"
-                fill="#E6B84A"
-              />
-              <path
-                d="M12 11.8C12 8.5 15 6.8 19.5 6.8C19.5 10.5 17.5 13.8 12 13.8"
-                fill="#E6B84A"
-                opacity="0.88"
-              />
-            </svg>
-          </div>
+          {/* Left: App Logo Emblem */}
+          <img
+            src="/logo.png"
+            alt="Grama Sahayya AI"
+            className="w-[34px] h-[34px] rounded-[10px] object-contain shrink-0 shadow-xs"
+          />
 
           {/* Center: App Name & Subtitle */}
           <div className="flex-1 min-w-0 px-2.5">
