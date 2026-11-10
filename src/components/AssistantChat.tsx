@@ -99,6 +99,15 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   const [currentlyPlayingMsgId, setCurrentlyPlayingMsgId] = useState<string | null>(null);
   const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isVoiceSubmittingRef = useRef(false);
+
+  // Stop active speech and speech recognition on unmount or tab switch
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+      stopVoiceListening();
+    };
+  }, [stopSpeaking, stopVoiceListening]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -185,13 +194,24 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     if (isListening) {
       stopVoiceListening();
     } else {
+      // Cease any active speech before listening
+      stopSpeaking();
+      setCurrentlyPlayingMsgId(null);
+      isVoiceSubmittingRef.current = false;
+
       startVoiceListening(
         (transcript) => {
+          if (!transcript || !transcript.trim() || isVoiceSubmittingRef.current) return;
+          isVoiceSubmittingRef.current = true;
           setInputQuery(transcript);
           handleSendMessage(transcript);
+          setTimeout(() => {
+            isVoiceSubmittingRef.current = false;
+          }, 1000);
         },
         (err) => {
           console.warn('Voice error:', err);
+          isVoiceSubmittingRef.current = false;
         }
       );
     }

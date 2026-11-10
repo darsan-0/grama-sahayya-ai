@@ -16,6 +16,8 @@ import {
   containsYsrBranding,
   normalizeSchemeText
 } from './src/utils/schemeNormalization.ts';
+import { searchSchemes } from './src/utils/schemeSearch.ts';
+import { classifyCitizenIntent, generateGroundedResponse } from './src/utils/intentClassifier.ts';
 
 dotenv.config();
 
@@ -108,47 +110,20 @@ app.get('/api/app-info', (req: Request, res: Response) => {
 // API: Verified Schemes catalog endpoint
 app.get('/api/schemes', (req: Request, res: Response) => {
   const { category, govLevel, search } = req.query;
-  const publicSchemes = filterPublicSchemes(VERIFIED_SCHEMES);
 
-  // If search query specifically contains YSR branding, return clean empty result with explanatory notice
-  if (search && typeof search === 'string' && containsYsrBranding(search)) {
-    return res.json({
-      schemes: [],
-      total: 0,
-      excludedBrandNotice: 'YSR-branded schemes have been excluded from the public directory and archived. Please refer to current verified Andhra Pradesh welfare programs such as Annadata Sukhibhava, NTR Bharosa, Dr. NTR Vaidya Seva, Talliki Vandanam, Aadabidda Nidhi, and Sthree Shakthi.'
-    });
-  }
+  const searchResult = searchSchemes(typeof search === 'string' ? search : '', {
+    category: typeof category === 'string' ? category : undefined,
+    govLevel: typeof govLevel === 'string' ? govLevel : undefined
+  });
 
-  let results = [...publicSchemes];
-
-  if (category && typeof category === 'string') {
-    results = results.filter(s => s.category === category);
-  }
-  if (govLevel && typeof govLevel === 'string') {
-    results = results.filter(s => s.govLevel === govLevel);
-  }
-  if (search && typeof search === 'string') {
-    const q = normalizeSchemeText(search);
-    results = results.filter(s => {
-      const nameNorm = normalizeSchemeText(s.officialName);
-      const teNameNorm = normalizeSchemeText(s.teName);
-      const sumNorm = normalizeSchemeText(s.summary);
-      const teSumNorm = normalizeSchemeText(s.teSummary);
-      const catNorm = normalizeSchemeText(s.category);
-      const deptNorm = normalizeSchemeText(s.department);
-
-      return (
-        nameNorm.includes(q) ||
-        teNameNorm.includes(q) ||
-        sumNorm.includes(q) ||
-        teSumNorm.includes(q) ||
-        catNorm.includes(q) ||
-        deptNorm.includes(q)
-      );
-    });
-  }
-
-  res.json({ schemes: results, total: results.length });
+  res.json({
+    schemes: searchResult.schemes,
+    total: searchResult.totalMatches,
+    totalVerifiedInDatabase: searchResult.totalVerifiedInDatabase,
+    crossServiceMatch: searchResult.crossServiceMatch,
+    explanatoryNotice: searchResult.explanatoryNotice,
+    excludedBrandNotice: searchResult.explanatoryNotice
+  });
 });
 
 // API: Verified Public Services endpoint with filtering
@@ -283,194 +258,76 @@ app.get('/api/admin/archived-public-services', (req: Request, res: Response) => 
 });
 
 
-// API: Gemini Chat Assistant with RAG grounding
+// In-memory cache for high-speed sub-50ms conversational response delivery
+interface CachedChatResponse {
+  reply: string;
+  language: string;
+  detectedLanguage: string;
+  isMixedLanguage: boolean;
+  recommendedSchemeIds: string[];
+  intent: string;
+  timestamp: string;
+}
+
+const CHAT_CACHE = new Map<string, { data: CachedChatResponse; expiresAt: number }>();
+const CHAT_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_CACHE_ENTRIES = 1000;
+
+function getCachedChat(key: string): CachedChatResponse | null {
+  const item = CHAT_CACHE.get(key);
+  if (!item) return null;
+  if (Date.now() > item.expiresAt) {
+    CHAT_CACHE.delete(key);
+    return null;
+  }
+  return item.data;
+}
+
+function setCachedChat(key: string, data: CachedChatResponse): void {
+  if (CHAT_CACHE.size >= MAX_CACHE_ENTRIES) {
+    // Evict oldest entry
+    const oldestKey = CHAT_CACHE.keys().next().value;
+    if (oldestKey) CHAT_CACHE.delete(oldestKey);
+  }
+  CHAT_CACHE.set(key, { data, expiresAt: Date.now() + CHAT_CACHE_TTL_MS });
+}
+
+// API: Grounded Citizen Assistant with Intent Classification and Response Caching
 app.post('/api/chat', async (req: Request, res: Response) => {
+  const startTime = Date.now();
   try {
     const { message, language = 'te', conversationHistory = [], citizenProfile } = req.body;
 
-    if (!message || typeof message !== 'string') {
+    if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ error: 'Message text is required' });
     }
 
+    const trimmedMsg = message.trim();
+
     // Automatically detect language of citizen's latest query
-    const detected = detectMessageLanguage(message, language);
+    const detected = detectMessageLanguage(trimmedMsg, language);
     const detectedLang = detected.detectedLang; // 'te' | 'en' | 'te-mixed' | 'hi'
     const responseLanguageCode = detected.languageCode; // 'te' | 'en' | 'hi'
 
-    // Build RAG Grounding Context strictly from cleaned public database
-    const publicSchemes = filterPublicSchemes(VERIFIED_SCHEMES);
-    const schemesContext = publicSchemes.map(s => `
-[SCHEME ID: ${s.id}]
-Official Name: ${s.officialName}
-Telugu Name: ${s.teName}
-Department: ${s.department} (${s.govLevel} level, ${s.state})
-Category: ${s.category}
-Benefit: ${s.benefitDetails} (${s.benefitAmount || 'N/A'})
-Eligibility Criteria:
-- Age: ${s.eligibilityCriteria.minAge || 'Any'} to ${s.eligibilityCriteria.maxAge || 'Any'}
-- Gender: ${s.eligibilityCriteria.gender || 'All'}
-- Max Annual Income: ${s.eligibilityCriteria.maxAnnualIncome ? `₹${s.eligibilityCriteria.maxAnnualIncome}` : 'No limit specified'}
-- Education: ${s.eligibilityCriteria.educationLevels?.join(', ') || 'Any'}
-- Social Category: ${s.eligibilityCriteria.socialCategories?.join(', ') || 'All'}
-- Key Rules: ${s.eligibilityCriteria.additionalRules.join(' | ')}
-- Exclusions: ${s.exclusions.join(' | ')}
-Required Documents: ${s.requiredDocuments.join(', ')}
-How to apply: ${s.applicationSteps.join(' -> ')}
-Official Application Portal: ${s.officialApplicationUrl}
-Source URLs: ${s.sourceUrls.join(', ')}
-Verification Status: ${s.verificationStatus}
-Helpline: ${s.verifiedHelpline || '1902'}
-`).join('\n---\n');
-
-    const publicServicesContext = VERIFIED_PUBLIC_SERVICES.map(p => `
-[SERVICE ID: ${p.id}]
-Name: ${p.name}
-Telugu Name: ${p.teName}
-Category: ${p.category}
-Government Level: ${p.govLevel === 'state' ? 'Andhra Pradesh State Government' : 'Central Government'}
-Department: ${p.department}
-Official Info URL: ${p.officialInfoUrl}
-Official Application Portal: ${p.officialApplicationUrl}
-Status: ${p.status}
-Last Verified Date: ${p.lastVerifiedDate}
-Verification Source: ${p.verificationSource}
-Official Statutory Fee: ${p.officialFee}
-Processing Time: ${p.processingTime}
-Eligibility: ${p.eligibility}
-Required Documents: ${p.requiredDocuments.join(', ')}
-Application Steps: ${p.steps.join(' -> ')}
-Helpline: ${p.supportHelpline || '1902'}
-`).join('\n---\n');
-
-    const profileContext = citizenProfile ? `
-CITIZEN PROFILE:
-- Preferred Language: ${citizenProfile.preferredLanguage || responseLanguageCode}
-- State: ${citizenProfile.state || 'Andhra Pradesh'}
-- District: ${citizenProfile.district || 'Not specified'}
-- Location: ${citizenProfile.locationType || 'rural'}
-- Education: ${citizenProfile.educationLevel || 'Not specified'} (Study Year: ${citizenProfile.studyYear || 'N/A'})
-- Occupation: ${citizenProfile.occupation || 'Not specified'}
-- Income Range: ${citizenProfile.incomeRange || 'Not specified'} (Approx: ₹${citizenProfile.approxAnnualIncome || 'N/A'})
-- Age: ${citizenProfile.age || 'Not specified'}
-- Gender: ${citizenProfile.gender || 'Not specified'}
-- Social Category: ${citizenProfile.socialCategory || 'Not specified'}
-- Is Farmer: ${citizenProfile.isFarmer ? 'Yes' : 'No'}
-` : 'CITIZEN PROFILE: Anonymous visitor (no demographic profile loaded yet).';
-
-    let languageInstruction = '';
-    if (detectedLang === 'en') {
-      languageInstruction = `The citizen asked this query in ENGLISH ("${message}").
-- You MUST formulate your entire conversational response in clear, simple, respectful ENGLISH.
-- Mention the Telugu name in parentheses alongside the official English name (e.g., "**Talliki Vandanam** (తల్లికి వందనం)"), but write all explanations, eligibility rules, and instructions in ENGLISH.
-- Even if previous messages in the conversation history were in Telugu or another language, the citizen's LATEST message is in English, so you MUST respond in ENGLISH.`;
-    } else if (detectedLang === 'te') {
-      languageInstruction = `The citizen asked this query in TELUGU SCRIPT ("${message}").
-- You MUST formulate your entire response in authentic, polite, and natural TELUGU (గౌరవప్రదమైన సహజ తెలుగు).
-- Keep official scheme titles recognizable (e.g., "**అన్నదాత సుఖీభవ** (Annadata Sukhibhava)").
-- Even if previous messages in the conversation history were in English, the citizen's LATEST message is in Telugu, so you MUST respond in TELUGU.`;
-    } else if (detectedLang === 'te-mixed') {
-      languageInstruction = `The citizen asked this query in TELUGU-ENGLISH MIXED / CODE-SWITCHED format ("${message}").
-- Respond in natural, accessible, friendly bilingual Telugu / code-mixed Telugu-English that directly matches the citizen's conversational style.
-- Use Telugu script or clear mixed Telugu-English with common official terms (e.g., "Application Portal", "Aadhaar Card", "College Allotment Order", "Tuition Fee Reimbursement", "Meeseva", "Village/Ward Secretariat") kept intact.
-- Even if previous messages were in another language, adapt to this latest code-mixed query.`;
-    } else {
-      languageInstruction = `Respond in the citizen's query language ("${detectedLang}"). Match their tone, preserve official scheme titles and portal URLs.`;
-    }
-
-    const systemPrompt = `
-You are "Grama Sahayya AI Assistant" (గ్రామ సహాయ AI సహాయకుడు), an empathetic, truthful, authoritative public welfare assistant for the citizens of India, with deep expertise in Andhra Pradesh state schemes and Central government programs.
-
-ROLE & BEHAVIOR:
-1. DYNAMIC MULTILINGUAL RESPONSE (LATEST MESSAGE MATCHING):
-   ${languageInstruction}
-   - CRITICAL: Never force a fixed language. Base your reply language STRICTLY on the language of the user's LATEST message.
-   - For follow-up questions, always switch to the language of the latest user query, even if earlier messages used a different language.
-
-2. TRUTHFULNESS & GROUNDING: Ground your recommendations STRICTLY in the verified government schemes and public digital services provided below. NEVER invent schemes, eligibility criteria, phone numbers, or official links.
-3. PRESERVE ACCURATE NAMES & OFFICIAL URLS: Keep government scheme names (e.g., 'Talliki Vandanam', 'Annadata Sukhibhava', 'Dr. NTR Vaidya Seva', 'NTR Bharosa'), official departments, official documents, and official portal URLs (e.g., 'https://annadathasukhibhava.ap.gov.in', 'https://drntrvaidyaseva.ap.gov.in', 'https://pmkisan.gov.in', 'https://uidai.gov.in') strictly accurate. Never translate or alter official website URLs.
-4. For eligibility: Clearly categorize as:
-   - Likely Eligible (అర్హత ఉండవచ్చు)
-   - Potentially Eligible — More Information Needed (మరిన్ని వివరాలు అవసరం)
-   - Likely Ineligible (అర్హత లేకపోవచ్చు)
-   - Unable to Verify (ధృవీకరించలేకపోయాము)
-5. Never guarantee government approval. Always state that final sanction depends on the competent government department.
-6. Provide actionable next steps: official portals, required documents, and where to apply (Village / Ward Secretariat - గ్రామ/వార్డు సచివాలయం, Meeseva, or official online portal).
-7. Provide interactive follow-up questions when vital criteria (like exact family income, study year, caste certificate, or landholding) are missing.
-8. MANDATORY YSR SCHEME EXCLUSION & TRANSITION GUIDANCE:
-   - All YSR-branded schemes (such as YSR Rythu Bharosa, YSR Pension Kanuka, YSR Aarogyasri, YSR Cheyutha, YSR Aasara) are EXCLUDED from the public active directory and must NEVER be recommended as active schemes.
-   - Do NOT regenerate excluded schemes from model memory.
-   - If a citizen asks about a legacy or past scheme (e.g., asks about "Rythu Bharosa", "Pension Kanuka", "Aarogyasri", or "Cheyutha"):
-     * Respectfully inform them in their query language (Telugu or English) about the current active, verified Andhra Pradesh state program:
-       - Agriculture / Farmers: **Annadata Sukhibhava & PM-KISAN** (₹20,000/year).
-       - Health: **Dr. NTR Vaidya Seva** (₹25 Lakhs universal cashless treatment).
-       - Social Security Pensions: **NTR Bharosa Social Security Pension** (₹4,000 to ₹15,000/month).
-       - Women & SHG Welfare: **Aadabidda Nidhi** (₹1,500/month) and **Sthree Shakthi** (APSRTC Free Bus Travel).
-       - Education: **Talliki Vandanam** (₹15,000/year per child) and Post-Matric Fee Reimbursement.
-     * Always provide official verified portal links and helplines.
-
-VERIFIED GOVERNMENT SCHEMES DATASET:
-${schemesContext}
-
-VERIFIED PUBLIC SERVICES DATASET:
-${publicServicesContext}
-
-${profileContext}
-`;
-
-    // Try Gemini API if initialized
-    if (genAI) {
-      try {
-        const contents: any[] = [];
-
-        // Add history
-        if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-          for (const msg of conversationHistory.slice(-6)) {
-            contents.push({
-              role: msg.role === 'assistant' ? 'model' : 'user',
-              parts: [{ text: msg.content }]
-            });
-          }
-        }
-
-        // Add user current message
-        contents.push({
-          role: 'user',
-          parts: [{ text: message }]
-        });
-
-        const response = await genAI.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents,
-          config: {
-            systemInstruction: systemPrompt,
-            temperature: 0.3,
-            maxOutputTokens: 2048,
-          }
-        });
-
-        const replyText = response.text || 'I could not generate an answer at this moment.';
-
-        // Detect matching scheme IDs in answer strictly from public schemes
-        const recommendedSchemeIds = publicSchemes
-          .filter(s => replyText.toLowerCase().includes(s.id) || replyText.toLowerCase().includes(s.officialName.toLowerCase().slice(0, 15)) || replyText.includes(s.teName.slice(0, 8)))
-          .map(s => s.id);
-
+    // Fast Cache Lookup: check if exact query was answered recently (for anonymous or profile-free queries)
+    const isAnonymous = !citizenProfile || Object.keys(citizenProfile).length === 0;
+    const cacheKey = `${responseLanguageCode}::${trimmedMsg.toLowerCase()}`;
+    if (isAnonymous && (!conversationHistory || conversationHistory.length === 0)) {
+      const cached = getCachedChat(cacheKey);
+      if (cached) {
         return res.json({
-          reply: replyText,
-          language: responseLanguageCode,
-          detectedLanguage: detectedLang,
-          isMixedLanguage: detected.isMixed,
-          recommendedSchemeIds,
-          timestamp: new Date().toISOString()
+          ...cached,
+          fromCache: true,
+          latencyMs: Date.now() - startTime
         });
-      } catch (geminiError: any) {
-        console.warn('Gemini API call failed, falling back to rule-based engine:', geminiError?.message || geminiError);
       }
     }
 
-    // Fallback deterministic conversational response generator
-    // Check if query specifically asks about YSR-branded schemes
-    if (containsYsrBranding(message)) {
+    // 1. Classify citizen intent deterministically using strict 13 categories
+    const classification = classifyCitizenIntent(trimmedMsg);
+
+    // 2. Handle legacy YSR-branding queries with transition guidance to active programs
+    if (containsYsrBranding(trimmedMsg)) {
       let legacyNotice = '';
       if (detectedLang === 'en') {
         legacyNotice = `Hello! YSR-branded schemes have been excluded from the public directory and safely archived. 
@@ -498,100 +355,162 @@ Which of these current programs would you like guidance on?`;
 మీరు ఏ పథకం గురించి తెలుసుకోవాలనుకుంటున్నారో తెలియజేయండి.`;
       }
 
-      return res.json({
+      const responsePayload: CachedChatResponse = {
         reply: legacyNotice,
         language: responseLanguageCode,
         detectedLanguage: detectedLang,
         isMixedLanguage: detected.isMixed,
         recommendedSchemeIds: ['annadata-sukhibhava-ap', 'dr-ntr-vaidya-seva-ap', 'ntr-bharosa-pension-ap'],
+        intent: 'SCHEME_INFORMATION',
         timestamp: new Date().toISOString()
+      };
+
+      if (isAnonymous) setCachedChat(cacheKey, responsePayload);
+
+      return res.json({
+        ...responsePayload,
+        fromCache: false,
+        latencyMs: Date.now() - startTime
       });
     }
 
-    const msgLower = message.toLowerCase();
-    let matchedScheme = publicSchemes.find(s => {
-      if (msgLower.includes(s.id)) return true;
-      if (msgLower.includes(s.officialName.toLowerCase())) return true;
-      if ((msgLower.includes('scholarship') || msgLower.includes('విద్యార్థి') || msgLower.includes('deevena')) && s.category === 'education') return true;
-      if ((msgLower.includes('రైతు') || msgLower.includes('farmer') || msgLower.includes('agriculture') || msgLower.includes('sukhibhava') || msgLower.includes('kisan')) && s.category === 'agriculture') return true;
-      if ((msgLower.includes('pension') || msgLower.includes('పింఛన్') || msgLower.includes('bharosa') || msgLower.includes('widow') || msgLower.includes('disability')) && s.category === 'pensions') return true;
-      if ((msgLower.includes('health') || msgLower.includes('వైద్యం') || msgLower.includes('aarogyasri') || msgLower.includes('vaidya') || msgLower.includes('ఆసుపత్రి')) && s.category === 'health') return true;
-      if ((msgLower.includes('women') || msgLower.includes('మహిళ') || msgLower.includes('డ్వాక్రా') || msgLower.includes('cheyutha') || msgLower.includes('aasara') || msgLower.includes('aadabidda')) && s.category === 'women_shg') return true;
-      if ((msgLower.includes('bus') || msgLower.includes('బస్సు') || msgLower.includes('free bus') || msgLower.includes('sthree shakthi')) && s.id === 'sthree-shakthi-free-bus-ap') return true;
-      if ((msgLower.includes('unemployment') || msgLower.includes('నిరుద్యోగ') || msgLower.includes('youth') || msgLower.includes('yuva galam')) && s.id === 'yuva-galam-unemployment-allowance-ap') return true;
-      if ((msgLower.includes('solar') || msgLower.includes('సౌర') || msgLower.includes('surya')) && s.id === 'pm-surya-ghar-muft-bijli') return true;
-      if ((msgLower.includes('gas') || msgLower.includes('గ్యాస్') || msgLower.includes('cylinder') || msgLower.includes('deepam')) && s.id === 'ap-deepam-free-lpg-scheme') return true;
-      return false;
-    }) || publicSchemes[0];
+    // 3. For direct public service queries (PAN, Aadhaar, Caste Certificates, Greetings, Out of scope, Status),
+    // provide instant deterministic grounded responses with ZERO risk of confusing welfare schemes!
+    const isDirectIntent = [
+      'PAN_CARD',
+      'AADHAAR_SERVICES',
+      'CERTIFICATE_SERVICES',
+      'GREETINGS',
+      'OUT_OF_SCOPE',
+      'APPLICATION_STATUS'
+    ].includes(classification.intent) || Boolean(classification.matchedService);
 
-    let reply = '';
-    if (detectedLang === 'en') {
-      reply = `Hello! Based on your query, here is the verified information for **${matchedScheme.officialName}** (${matchedScheme.teName}):
+    if (isDirectIntent) {
+      const groundedRes = generateGroundedResponse(classification, trimmedMsg, responseLanguageCode);
+      const recommendedSchemeIds = groundedRes.recommendedSchemeIds.length > 0 
+        ? groundedRes.recommendedSchemeIds 
+        : (classification.matchedScheme ? [classification.matchedScheme.id] : []);
 
-**Benefits:** ${matchedScheme.benefitDetails} (${matchedScheme.benefitAmount || 'N/A'})
+      const responsePayload: CachedChatResponse = {
+        reply: groundedRes.reply,
+        language: responseLanguageCode,
+        detectedLanguage: detectedLang,
+        isMixedLanguage: detected.isMixed,
+        recommendedSchemeIds,
+        intent: classification.intent,
+        timestamp: new Date().toISOString()
+      };
 
-**Key Eligibility Conditions:**
-${matchedScheme.eligibilityCriteria.additionalRules.map(r => `• ${r}`).join('\n')}
+      if (isAnonymous) setCachedChat(cacheKey, responsePayload);
 
-**Required Documents:**
-${matchedScheme.requiredDocuments.map(d => `• ${d}`).join('\n')}
-
-**How to Apply:**
-${matchedScheme.applicationSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-
-Official Application Portal: ${matchedScheme.officialApplicationUrl}
-Department: ${matchedScheme.department}
-Helpline: ${matchedScheme.verifiedHelpline || '1902'}
-
-*Note: Final sanction is subject to official verification by the competent government authority.*`;
-    } else if (detectedLang === 'te') {
-      reply = `నమస్కారం! మీ ప్రశ్నకు సంబంధించి ధృవీకరించబడిన సమాచారం: **${matchedScheme.teName}** (${matchedScheme.officialName}).
-
-**ప్రయోజనం:** ${matchedScheme.teBenefitDetails}
-
-**అర్హత నిబంధనలు:**
-${matchedScheme.eligibilityCriteria.teAdditionalRules.map(r => `• ${r}`).join('\n')}
-
-**కావలసిన పత్రాలు:**
-${matchedScheme.teRequiredDocuments.map(d => `• ${d}`).join('\n')}
-
-**దరఖాస్తు విధానం:**
-${matchedScheme.teApplicationSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-
-అధికారిక వెబ్‌సైట్: ${matchedScheme.officialApplicationUrl}
-శాఖ: ${matchedScheme.department}
-సహాయవాణి: ${matchedScheme.verifiedHelpline || '1902'}
-
-*గమనిక: తుది మంజూరు గ్రామ/వార్డు సచివాలయం మరియు ప్రభుత్వ నిబంధనలకు లోబడి ఉంటుంది.*`;
-    } else {
-      // te-mixed / code-mixed response
-      reply = `నమస్కారం! మీ ప్రశ్నకు సంబంధించి **${matchedScheme.teName}** (${matchedScheme.officialName}) వివరాలు:
-
-**ప్రయోజనం (Benefit Details):** ${matchedScheme.benefitDetails} (${matchedScheme.benefitAmount || 'N/A'})
-
-**అర్హత నిబంధనలు (Key Eligibility Conditions):**
-${matchedScheme.eligibilityCriteria.additionalRules.map(r => `• ${r}`).join('\n')}
-
-**కావలసిన పత్రాలు (Required Documents):**
-${matchedScheme.requiredDocuments.map(d => `• ${d}`).join('\n')}
-
-**దరఖాస్తు విధానం (Application Process):**
-${matchedScheme.applicationSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-
-Official Application Portal: ${matchedScheme.officialApplicationUrl}
-Department: ${matchedScheme.department}
-Helpline: ${matchedScheme.verifiedHelpline || '1902'}
-
-*గమనిక: తుది మంజూరు గ్రామ/వార్డు సచివాలయం మరియు ప్రభుత్వ నిబంధనలకు లోబడి ఉంటుంది (Final approval subject to official verification).*`;
+      return res.json({
+        ...responsePayload,
+        fromCache: false,
+        latencyMs: Date.now() - startTime
+      });
     }
 
-    return res.json({
-      reply,
+    // 4. Scheme queries: if Gemini LLM is available and scheme is identified, provide tightly bounded grounding
+    const matchedScheme = classification.matchedScheme;
+
+    if (genAI && matchedScheme && process.env.GEMINI_API_KEY) {
+      try {
+        const schemeFactSheet = `
+OFFICIAL VERIFIED SCHEME:
+- ID: ${matchedScheme.id}
+- Official Name: ${matchedScheme.officialName}
+- Telugu Name: ${matchedScheme.teName}
+- Department: ${matchedScheme.department} (${matchedScheme.govLevel} government)
+- Category: ${matchedScheme.category}
+- Benefits: ${matchedScheme.benefitDetails} (${matchedScheme.benefitAmount || 'N/A'})
+- Eligibility:
+  * Age: ${matchedScheme.eligibilityCriteria.minAge || 'Any'} to ${matchedScheme.eligibilityCriteria.maxAge || 'Any'}
+  * Income Limit: ${matchedScheme.eligibilityCriteria.maxAnnualIncome ? `₹${matchedScheme.eligibilityCriteria.maxAnnualIncome}` : 'No specific limit'}
+  * Key Rules: ${matchedScheme.eligibilityCriteria.additionalRules.join(' | ')}
+  * Exclusions: ${matchedScheme.exclusions.join(' | ')}
+- Required Documents: ${matchedScheme.requiredDocuments.join(', ')}
+- Application Steps: ${matchedScheme.applicationSteps.join(' -> ')}
+- Official Application Portal: ${matchedScheme.officialApplicationUrl}
+- Official Helpline: ${matchedScheme.verifiedHelpline || '1902'}
+`;
+
+        const systemPrompt = `You are "Grama Sahayya AI Assistant" (గ్రామ సహాయ AI సహాయకుడు).
+Respond ONLY in ${detectedLang === 'te' ? 'authentic polite Telugu (తెలుగు)' : detectedLang === 'en' ? 'clear English' : 'natural bilingual Telugu-English'}.
+Base your answer STRICTLY on the official verified facts provided below.
+Do NOT invent eligibility conditions, document requirements, or URLs.
+If the requested information is not in the facts, state clearly: "I don't want to provide incorrect government information. Please verify with the official portal: ${matchedScheme.officialApplicationUrl}".
+Always mention the official application portal and the 1902 helpline.
+
+${schemeFactSheet}
+`;
+
+        const contents: any[] = [];
+        if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+          for (const msg of conversationHistory.slice(-4)) {
+            contents.push({
+              role: msg.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: msg.content }]
+            });
+          }
+        }
+        contents.push({ role: 'user', parts: [{ text: trimmedMsg }] });
+
+        const response = await genAI.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents,
+          config: {
+            systemInstruction: systemPrompt,
+            temperature: 0.2,
+            maxOutputTokens: 1024
+          }
+        });
+
+        const replyText = response.text || generateGroundedResponse(classification, trimmedMsg, responseLanguageCode).reply;
+
+        const responsePayload: CachedChatResponse = {
+          reply: replyText,
+          language: responseLanguageCode,
+          detectedLanguage: detectedLang,
+          isMixedLanguage: detected.isMixed,
+          recommendedSchemeIds: [matchedScheme.id],
+          intent: classification.intent,
+          timestamp: new Date().toISOString()
+        };
+
+        if (isAnonymous) setCachedChat(cacheKey, responsePayload);
+
+        return res.json({
+          ...responsePayload,
+          fromCache: false,
+          latencyMs: Date.now() - startTime
+        });
+      } catch (geminiError: any) {
+        console.warn('Gemini generateContent notice, utilizing deterministic grounded response:', geminiError?.message || geminiError);
+      }
+    }
+
+    // 5. High-precision grounded response (used when LLM key is absent, query is out-of-scope, or as fast fallback)
+    const groundedRes = generateGroundedResponse(classification, trimmedMsg, responseLanguageCode);
+    const recommendedSchemeIds = groundedRes.recommendedSchemeIds.length > 0 
+      ? groundedRes.recommendedSchemeIds 
+      : (classification.matchedScheme ? [classification.matchedScheme.id] : []);
+
+    const responsePayload: CachedChatResponse = {
+      reply: groundedRes.reply,
       language: responseLanguageCode,
       detectedLanguage: detectedLang,
       isMixedLanguage: detected.isMixed,
-      recommendedSchemeIds: [matchedScheme.id],
+      recommendedSchemeIds,
+      intent: classification.intent,
       timestamp: new Date().toISOString()
+    };
+
+    if (isAnonymous) setCachedChat(cacheKey, responsePayload);
+
+    return res.json({
+      ...responsePayload,
+      fromCache: false,
+      latencyMs: Date.now() - startTime
     });
   } catch (error: any) {
     console.error('Error in /api/chat:', error);
@@ -604,7 +523,10 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer } = await import('vite');
     const vite = await createServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

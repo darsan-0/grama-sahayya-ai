@@ -27,6 +27,7 @@ import {
   containsYsrBranding,
   normalizeSchemeText
 } from '../utils/schemeNormalization';
+import { searchSchemes, SchemeSearchResult } from '../utils/schemeSearch';
 import { useLanguage } from '../context/LanguageContext';
 import {
   getSchemeTitle,
@@ -75,51 +76,28 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
 
   const isTe = currentLanguage === 'te';
 
-  const isYsrSearch = useMemo(() => containsYsrBranding(search), [search]);
+  const isYsrSearch = useMemo(() => {
+    // Only flag if search explicitly contains YSR branding without valid district/context
+    return containsYsrBranding(search) && !/rythu\s*bharosa|రైతు\s*భరోసా/i.test(search);
+  }, [search]);
 
-  const filteredSchemes = useMemo(() => {
-    // Strictly filter out any YSR-branded or unverified entries
-    const publicCatalog = filterPublicSchemes(VERIFIED_SCHEMES);
-
-    // If query contains explicit YSR branding, public results must be empty
+  // Execute unified bilingual search with synonym expansion and typo tolerance
+  const searchResult: SchemeSearchResult = useMemo(() => {
     if (isYsrSearch) {
-      return [];
+      return {
+        schemes: [],
+        totalMatches: 0,
+        totalVerifiedInDatabase: filterPublicSchemes(VERIFIED_SCHEMES).length
+      };
     }
-
-    return publicCatalog.filter((scheme) => {
-      // Gov level filter
-      if (selectedGovLevel !== 'all' && scheme.govLevel !== selectedGovLevel) {
-        return false;
-      }
-      // Category filter
-      if (selectedCategory !== 'all' && scheme.category !== selectedCategory) {
-        return false;
-      }
-      // Text search
-      if (search.trim()) {
-        const q = normalizeSchemeText(search);
-        const nameNorm = normalizeSchemeText(scheme.officialName);
-        const teNameNorm = normalizeSchemeText(scheme.teName);
-        const sumNorm = normalizeSchemeText(scheme.summary);
-        const teSumNorm = normalizeSchemeText(scheme.teSummary);
-        const catNorm = normalizeSchemeText(scheme.category);
-        const deptNorm = normalizeSchemeText(scheme.department);
-
-        const matches =
-          nameNorm.includes(q) ||
-          teNameNorm.includes(q) ||
-          sumNorm.includes(q) ||
-          teSumNorm.includes(q) ||
-          catNorm.includes(q) ||
-          deptNorm.includes(q);
-
-        if (!matches) {
-          return false;
-        }
-      }
-      return true;
+    return searchSchemes(search, {
+      category: selectedCategory,
+      govLevel: selectedGovLevel
     });
   }, [search, selectedGovLevel, selectedCategory, isYsrSearch]);
+
+  const filteredSchemes = searchResult.schemes;
+  const isFiltering = search.trim().length > 0 || selectedCategory !== 'all' || selectedGovLevel !== 'all';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -132,8 +110,10 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
                 ? 'ప్రభుత్వ సంక్షేమ పథకాల జాబితా'
                 : 'Government Welfare Scheme Directory'}
             </span>
-            <span className="bg-[#EBF3F0] text-[#075B46] text-xs font-semibold px-2.5 py-0.5 rounded-full">
-              {filteredSchemes.length} {isTe ? 'ధృవీకరించబడింది' : 'Verified'}
+            <span className="bg-[#EBF3F0] text-[#075B46] text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#C8DDD6]">
+              {isFiltering
+                ? `${filteredSchemes.length} ${isTe ? 'ఫలితాలు' : 'Matches'} (${searchResult.totalVerifiedInDatabase} ${isTe ? 'మొత్తం' : 'Total'})`
+                : `${searchResult.totalVerifiedInDatabase} ${isTe ? 'ధృవీకరించబడింది' : 'Verified'}`}
             </span>
           </h1>
           <p className="text-xs sm:text-sm text-[#686B66] mt-1 font-normal">
@@ -208,6 +188,44 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
         </div>
       </div>
 
+      {/* Explanatory Notice (e.g. for Rythu Bharosa transition to Annadata Sukhibhava) */}
+      {searchResult.explanatoryNotice && (
+        <div className="bg-[#EBF3F0] border border-[#C8DDD6] rounded-xl p-3.5 text-xs text-[#075B46] flex items-start gap-2.5 shadow-2xs">
+          <ShieldCheck className="w-4 h-4 shrink-0 text-[#075B46] mt-0.5" />
+          <p className="leading-relaxed">
+            {isTe
+              ? 'గమనిక: అన్నదాత సుఖీభవ & పీఎం-కిసాన్ పథకం (ఏటా ₹20,000) ప్రస్తుత అధికారిక ప్రభుత్వం అమలు చేస్తున్న రైతు పెట్టుబడి సాయం పథకం.'
+              : searchResult.explanatoryNotice}
+          </p>
+        </div>
+      )}
+
+      {/* Cross-Service Discovery Banner (e.g. if user searches PAN Card or Aadhaar) */}
+      {searchResult.crossServiceMatch && (
+        <div className="bg-[#FAF9F5] border border-[#E6B84A]/60 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 shrink-0 text-[#B8860B] mt-0.5" />
+            <div>
+              <h4 className="text-xs font-semibold text-[#242824]">
+                {isTe ? 'పౌర సేవ కనుగొనబడింది:' : 'Citizen Public Service Found:'} {isTe ? searchResult.crossServiceMatch.teName : searchResult.crossServiceMatch.name}
+              </h4>
+              <p className="text-[11px] text-[#686B66] mt-0.5">
+                {isTe ? searchResult.crossServiceMatch.tePurpose : searchResult.crossServiceMatch.purpose}
+              </p>
+            </div>
+          </div>
+          <a
+            href={searchResult.crossServiceMatch.officialApplicationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#075B46] hover:text-[#064B3A] bg-white border border-[#C8DDD6] px-3 py-1.5 rounded-lg shadow-2xs shrink-0 cursor-pointer"
+          >
+            <span>{isTe ? 'అధికారిక పోర్టల్' : 'Official Portal'}</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      )}
+
       {/* Schemes Grid */}
       {filteredSchemes.length === 0 ? (
         isYsrSearch ? (
@@ -259,9 +277,15 @@ export const SchemeCatalog: React.FC<SchemeCatalogProps> = ({
               {isTe ? 'పథకాలు కనుగొనబడలేదు' : 'No matching schemes found'}
             </h3>
             <p className="text-xs text-[#686B66] max-w-sm mx-auto">
-              {isTe
-                ? 'శోధన పదాన్ని మార్చి లేదా ఫిల్టర్లను రీసెట్ చేసి ప్రయత్నించండి.'
-                : 'Try adjusting your search keyword or resetting the government level and category filters.'}
+              {search.trim() ? (
+                isTe
+                  ? `"${search}" కోసం పథకాలు లభించలేదు. అక్షరక్రమం సరిచూడండి లేదా విస్తృత పదాలతో (ఉదా. రైతు, పింఛన్, స్కాలర్‌షిప్) వెతకండి.`
+                  : `No schemes matched "${search}". Try checking spelling, using broader terms (e.g. 'farmer', 'pension', 'scholarship'), or resetting filters.`
+              ) : (
+                isTe
+                  ? 'ఎంచుకున్న ఫిల్టర్లకు అనుగుణంగా పథకాలు లేవు. దయచేసి ఫిల్టర్లను రీసెట్ చేయండి.'
+                  : 'No schemes match the selected category or level filters. Please reset filters.'
+              )}
             </p>
             <button
               onClick={() => {

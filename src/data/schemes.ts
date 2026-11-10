@@ -252,9 +252,10 @@ export const VERIFIED_SCHEMES: Scheme[] = [
       'సచివాలయంలో ప్రదర్శించిన అర్హుల జాబితాలో పేరు పరిశీలన.',
       'బ్యాంక్ ఖాతాలో నిధుల జమ.'
     ],
-    officialApplicationUrl: 'https://pmkisan.gov.in',
+    officialApplicationUrl: 'https://annadathasukhibhava.ap.gov.in',
     officialInfoUrl: 'https://agri.ap.gov.in',
     sourceUrls: [
+      'https://annadathasukhibhava.ap.gov.in',
       'https://agri.ap.gov.in',
       'https://pmkisan.gov.in',
       'https://gramawardsachivalayam.ap.gov.in',
