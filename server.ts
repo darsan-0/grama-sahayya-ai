@@ -17,7 +17,14 @@ import {
   normalizeSchemeText
 } from './src/utils/schemeNormalization.ts';
 import { searchSchemes } from './src/utils/schemeSearch.ts';
-import { classifyCitizenIntent, generateGroundedResponse } from './src/utils/intentClassifier.ts';
+import { 
+  classifyCitizenIntent, 
+  generateGroundedResponse, 
+  preCheckQueryAnswerability, 
+  AnswerabilityCheckResult, 
+  IntentClassificationResult 
+} from './src/utils/intentClassifier.ts';
+import { Scheme, PublicService } from './src/types/index.ts';
 
 dotenv.config();
 
@@ -292,6 +299,7 @@ function setCachedChat(key: string, data: CachedChatResponse): void {
   CHAT_CACHE.set(key, { data, expiresAt: Date.now() + CHAT_CACHE_TTL_MS });
 }
 
+
 // API: Grounded Citizen Assistant with Intent Classification and Response Caching
 app.post('/api/chat', async (req: Request, res: Response) => {
   const startTime = Date.now();
@@ -323,8 +331,32 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       }
     }
 
-    // 1. Classify citizen intent deterministically using strict 13 categories
-    const classification = classifyCitizenIntent(trimmedMsg);
+    // 1. Async Pre-Check: confirm if query is answerable from verified records BEFORE initiating full LLM call
+    const answerability = await preCheckQueryAnswerability(trimmedMsg, language);
+    const classification = answerability.classification;
+
+    // Fast-Exit for Unanswerable / Out-of-Scope Queries:
+    // If query is unverified or out-of-scope, immediately return mandatory verification fallback without invoking LLM
+    if (!answerability.isAnswerable) {
+      const groundedRes = generateGroundedResponse(classification, trimmedMsg, responseLanguageCode);
+      const responsePayload: CachedChatResponse = {
+        reply: groundedRes.reply,
+        language: responseLanguageCode,
+        detectedLanguage: detectedLang,
+        isMixedLanguage: detected.isMixed,
+        recommendedSchemeIds: [],
+        intent: classification.intent,
+        timestamp: new Date().toISOString()
+      };
+
+      if (isAnonymous) setCachedChat(cacheKey, responsePayload);
+
+      return res.json({
+        ...responsePayload,
+        fromCache: false,
+        latencyMs: Date.now() - startTime
+      });
+    }
 
     // 2. Handle legacy YSR-branding queries with transition guidance to active programs
     if (containsYsrBranding(trimmedMsg)) {
@@ -380,6 +412,7 @@ Which of these current programs would you like guidance on?`;
       'PAN_CARD',
       'AADHAAR_SERVICES',
       'CERTIFICATE_SERVICES',
+      'GOVERNMENT_SERVICE',
       'GREETINGS',
       'OUT_OF_SCOPE',
       'APPLICATION_STATUS'
@@ -410,13 +443,17 @@ Which of these current programs would you like guidance on?`;
       });
     }
 
-    // 4. Scheme queries: if Gemini LLM is available and scheme is identified, provide tightly bounded grounding
-    const matchedScheme = classification.matchedScheme;
+    // 4. Scheme queries: if Gemini LLM is available and scheme is identified
+    // Explicitly restrict context window by limiting retrieved scheme database records sent to LLM to strictly 1 record
+    const retrievedRecords = (answerability.retrievedSchemes && answerability.retrievedSchemes.length > 0)
+      ? answerability.retrievedSchemes.slice(0, 1)
+      : (classification.matchedScheme ? [classification.matchedScheme] : []);
+    const matchedScheme = retrievedRecords[0];
 
     if (genAI && matchedScheme && process.env.GEMINI_API_KEY) {
       try {
         const schemeFactSheet = `
-OFFICIAL VERIFIED SCHEME:
+OFFICIAL VERIFIED SCHEME (RETRIEVED RECORD 1 OF 1):
 - ID: ${matchedScheme.id}
 - Official Name: ${matchedScheme.officialName}
 - Telugu Name: ${matchedScheme.teName}
@@ -434,19 +471,31 @@ OFFICIAL VERIFIED SCHEME:
 - Official Helpline: ${matchedScheme.verifiedHelpline || '1902'}
 `;
 
+        const verificationFallback = detectedLang === 'te'
+          ? 'మీ ప్రశ్నకు సంబంధించి అధికారిక రికార్డులలో ధృవీకరించబడిన సమాచారం లభించలేదు. తప్పుడు ప్రభుత్వ సమాచారాన్ని అందించకుండా నివారించడానికి, దయచేసి సంబంధిత అధికారిక ప్రభుత్వ పోర్టల్ లేదా మీ సమీప గ్రామ/వార్డు సచివాలయాన్ని సంప్రదించండి.'
+          : "I couldn't find verified information for your query in the available official records. I don't want to provide incorrect government information. Please check the relevant official government portal.";
+
         const systemPrompt = `You are "Grama Sahayya AI Assistant" (గ్రామ సహాయ AI సహాయకుడు).
 Respond ONLY in ${detectedLang === 'te' ? 'authentic polite Telugu (తెలుగు)' : detectedLang === 'en' ? 'clear English' : 'natural bilingual Telugu-English'}.
-Base your answer STRICTLY on the official verified facts provided below.
-Do NOT invent eligibility conditions, document requirements, or URLs.
-If the requested information is not in the facts, state clearly: "I don't want to provide incorrect government information. Please verify with the official portal: ${matchedScheme.officialApplicationUrl}".
+
+CONTEXT WINDOW RESTRICTION (STRICT DATA BOUNDARY):
+- The retrieval engine has explicitly restricted your context window by limiting retrieved scheme database records to exactly 1 verified record ([Record 1 of 1]: "${matchedScheme.officialName}").
+- You are strictly forbidden from retrieving, assuming, or referencing unretrieved schemes from outside this boundary.
+- Base your answers SOLELY and EXCLUSIVELY on the single verified record provided below.
+- Do NOT invent eligibility conditions, document requirements, or URLs.
+
+CRITICAL MANDATORY VERIFICATION FALLBACK:
+If the citizen query asks for details not documented in these verified facts, or asks about unverified programs, you MUST output this exact verification fallback statement and nothing else:
+"${verificationFallback}"
 Always mention the official application portal and the 1902 helpline.
 
 ${schemeFactSheet}
 `;
 
+        // Optimize latency: limit context window to strictly the last 2 messages (1 conversation turn pair)
         const contents: any[] = [];
         if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-          for (const msg of conversationHistory.slice(-4)) {
+          for (const msg of conversationHistory.slice(-2)) {
             contents.push({
               role: msg.role === 'assistant' ? 'model' : 'user',
               parts: [{ text: msg.content }]
@@ -460,8 +509,8 @@ ${schemeFactSheet}
           contents,
           config: {
             systemInstruction: systemPrompt,
-            temperature: 0.2,
-            maxOutputTokens: 1024
+            temperature: 0.1,
+            maxOutputTokens: 600
           }
         });
 

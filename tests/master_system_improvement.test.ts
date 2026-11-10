@@ -1,5 +1,5 @@
 import { searchSchemes } from '../src/utils/schemeSearch.ts';
-import { classifyCitizenIntent, generateGroundedResponse } from '../src/utils/intentClassifier.ts';
+import { classifyCitizenIntent, generateGroundedResponse, preCheckQueryAnswerability } from '../src/utils/intentClassifier.ts';
 
 let passed = 0;
 let failed = 0;
@@ -246,7 +246,65 @@ assert(
   `Multi-field fuzzy search avg latency: ${avgPerSearch.toFixed(3)}ms (target < 10ms)`
 );
 
-console.log(`\n🎉 MASTER IMPROVEMENT TEST SUITE FINISHED: ${passed} PASSED, ${failed} FAILED! 🎉\n`);
-if (failed > 0) {
-  process.exit(1);
+// ==========================================
+// 4. ASYNC PRE-CHECK & RESTRICTED CONTEXT WINDOW TESTS
+// ==========================================
+console.log('\n--- 4. Async Pre-Check & Restricted Context Window Tests ---');
+
+async function runAsyncPreCheckTests() {
+  // Test 1: Civic service query confirms answerability without full LLM call
+  const check1 = await preCheckQueryAnswerability('How to apply pan card?', 'en');
+  assert(
+    check1.isAnswerable === true &&
+    check1.reason === 'verified_service_match' &&
+    check1.retrievedServices[0]?.id === 'pan-card-services',
+    '1. preCheckQueryAnswerability confirms PAN card is answerable from verified services'
+  );
+
+  // Test 2: Welfare scheme query confirms answerability and restricts context window to strictly 1 record
+  const check2 = await preCheckQueryAnswerability('What is the eligibility for Talliki Vandanam?', 'en');
+  assert(
+    check2.isAnswerable === true &&
+    check2.reason === 'verified_scheme_match' &&
+    check2.retrievedSchemes.length === 1 &&
+    check2.retrievedSchemes[0].id === 'talliki-vandanam-ap',
+    '2. preCheckQueryAnswerability restricts retrieved scheme database records to exactly 1 record'
+  );
+
+  // Test 3: Unrelated trivia marks query unanswerable (avoiding LLM call entirely)
+  const check3 = await preCheckQueryAnswerability('What is the capital of France?', 'en');
+  assert(
+    check3.isAnswerable === false &&
+    check3.reason === 'out_of_scope' &&
+    check3.retrievedSchemes.length === 0,
+    '3. preCheckQueryAnswerability flags out-of-scope query as unanswerable before LLM call'
+  );
+
+  // Test 4: Unknown / nonexistent scheme marks query unanswerable
+  const check4 = await preCheckQueryAnswerability('Tell me about unknown fake scheme xyz 99999', 'en');
+  assert(
+    check4.isAnswerable === false &&
+    check4.retrievedSchemes.length === 0,
+    '4. preCheckQueryAnswerability flags unknown scheme as unanswerable before LLM call'
+  );
+
+  // Test 5: Latency of async pre-check is ultra-fast (< 5ms)
+  const preCheckStart = performance.now();
+  for (let i = 0; i < 50; i++) {
+    await preCheckQueryAnswerability('How to apply pan card?');
+    await preCheckQueryAnswerability('What is the capital of France?');
+  }
+  const preCheckElapsedMs = performance.now() - preCheckStart;
+  const avgPreCheckMs = preCheckElapsedMs / 100;
+  assert(
+    avgPreCheckMs < 5,
+    `Async pre-check average latency: ${avgPreCheckMs.toFixed(3)}ms (target < 5ms)`
+  );
+
+  console.log(`\n🎉 MASTER IMPROVEMENT TEST SUITE FINISHED: ${passed} PASSED, ${failed} FAILED! 🎉\n`);
+  if (failed > 0) {
+    process.exit(1);
+  }
 }
+
+runAsyncPreCheckTests();

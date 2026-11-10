@@ -743,3 +743,82 @@ ${s.applicationSteps.map((step, i) => `   ${i + 1}. ${step}`).join('\n')}
     officialSources: ['https://services.india.gov.in', 'https://gramawardsachivalayam.ap.gov.in']
   };
 }
+
+export interface AnswerabilityCheckResult {
+  isAnswerable: boolean;
+  reason: 'verified_scheme_match' | 'verified_service_match' | 'conversational_intent' | 'unverified_query' | 'out_of_scope';
+  classification: IntentClassificationResult;
+  retrievedSchemes: Scheme[];
+  retrievedServices: PublicService[];
+}
+
+/**
+ * Async pre-check to confirm if a question is answerable from verified official records
+ * BEFORE initiating the full LLM call.
+ * 
+ * If isAnswerable is false, callers can immediately return the mandatory verification fallback,
+ * completely avoiding the latency and cost of a full LLM inference call.
+ */
+export async function preCheckQueryAnswerability(
+  query: string,
+  preferredLanguage: 'en' | 'te' | 'te-mixed' | 'hi' | string = 'te'
+): Promise<AnswerabilityCheckResult> {
+  const trimmed = (query || '').trim();
+  const validLang = (preferredLanguage === 'te' || preferredLanguage === 'en' || preferredLanguage === 'hi' || preferredLanguage === 'te-mixed')
+    ? preferredLanguage
+    : 'te';
+  const classification = classifyCitizenIntent(trimmed, validLang);
+
+  // 1. Direct public digital services and conversational intents are answerable from official records
+  if (
+    [
+      'PAN_CARD',
+      'AADHAAR_SERVICES',
+      'CERTIFICATE_SERVICES',
+      'GOVERNMENT_SERVICE',
+      'GREETINGS',
+      'APPLICATION_STATUS'
+    ].includes(classification.intent) ||
+    Boolean(classification.matchedService)
+  ) {
+    return {
+      isAnswerable: true,
+      reason: classification.matchedService ? 'verified_service_match' : 'conversational_intent',
+      classification,
+      retrievedSchemes: [],
+      retrievedServices: classification.matchedService ? [classification.matchedService] : []
+    };
+  }
+
+  // 2. Legacy / historical scheme transition guidance is verified
+  if (containsYsrBranding(trimmed) || classification.isLegacyTransitionQuery) {
+    return {
+      isAnswerable: true,
+      reason: 'conversational_intent',
+      classification,
+      retrievedSchemes: [],
+      retrievedServices: []
+    };
+  }
+
+  // 3. Out-of-scope or unverified checks: if intent is OUT_OF_SCOPE or no verified records matched
+  if (classification.intent === 'OUT_OF_SCOPE' || (!classification.matchedScheme && !classification.matchedService)) {
+    return {
+      isAnswerable: false,
+      reason: classification.intent === 'OUT_OF_SCOPE' ? 'out_of_scope' : 'unverified_query',
+      classification,
+      retrievedSchemes: [],
+      retrievedServices: []
+    };
+  }
+
+  // 4. Welfare scheme queries: strictly limit retrieved database records to maximum 1 primary record
+  const primaryScheme = classification.matchedScheme;
+  return {
+    isAnswerable: Boolean(primaryScheme),
+    reason: primaryScheme ? 'verified_scheme_match' : 'unverified_query',
+    classification,
+    retrievedSchemes: primaryScheme ? [primaryScheme] : [],
+    retrievedServices: []
+  };
+}
